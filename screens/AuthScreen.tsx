@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Animated,
+  Easing
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
@@ -36,6 +38,10 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   const [userType, setUserType] = useState<UserType>("buyer")
   const [isLoading, setIsLoading] = useState(false)
 
+  // Animation values
+  const dotAnimation = useRef(new Animated.Value(0)).current
+  const progressAnim = useRef(new Animated.Value(0)).current
+
   // Form fields
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -48,6 +54,39 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
     androidClientId: "63:92:FB:19:95:BE:9A:05:4A:E0:B9:35:FC:29:ED:91:CD:25:9C:9A",
     iosClientId: "com.googleusercontent.apps.917138938207-o39m78nc40p5iitma610du6qf6qljo6q",
   })
+
+  useEffect(() => {
+    if (isLoading) {
+      // Logo pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(dotAnimation, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(dotAnimation, {
+            toValue: 0,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start()
+      
+      // Progress bar animation
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: false,
+      }).start()
+    } else {
+      // Reset animations when loading completes
+      dotAnimation.setValue(0)
+      progressAnim.setValue(0)
+    }
+  }, [isLoading])
 
   useEffect(() => {
     if (response?.type === "success") {
@@ -139,8 +178,77 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Please wait...</Text>
+        <Animated.View style={styles.loadingContent}>
+          {/* Animated Logo */}
+          <Animated.Image
+            source={require("../assets/logo.png")}
+            style={[
+              styles.loadingLogo,
+              {
+                transform: [{
+                  scale: dotAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.1],
+                  })
+                }]
+              }
+            ]}
+            resizeMode="contain"
+          />
+          
+          {/* Animated Dots */}
+          <View style={styles.dotsContainer}>
+            {[...Array(3)].map((_, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  styles.loadingDot,
+                  { 
+                    backgroundColor: theme.primary,
+                    transform: [{
+                      translateY: dotAnimation.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0, -8, 0],
+                      })
+                    }],
+                    opacity: dotAnimation.interpolate({
+                      inputRange: [0, 0.3, 0.6, 1],
+                      outputRange: [0.3, 1, 0.3, 0.3],
+                    }),
+                  }
+                ]}
+              />
+            ))}
+          </View>
+          
+          {/* Loading Text */}
+          <Text style={[styles.loadingText, { color: theme.text }]}>
+            {userType === 'buyer' ? 'Preparing buyer experience...' :
+             userType === 'seller' ? 'Setting up seller dashboard...' :
+             'Getting runner tools ready...'}
+          </Text>
+          
+          {/* Progress Bar */}
+          <View style={[styles.progressBarContainer, { backgroundColor: theme.border }]}>
+            <Animated.View 
+              style={[
+                styles.progressBar,
+                { 
+                  backgroundColor: theme.primary,
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  })
+                }
+              ]}
+            />
+          </View>
+          
+          {/* Hint Text */}
+          <Text style={[styles.hintText, { color: theme.text + '80' }]}>
+            This won't take long...
+          </Text>
+        </Animated.View>
       </View>
     )
   }
@@ -156,7 +264,7 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
         >
           <View style={styles.header}>
             <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
-            <Text style={[styles.title, { color: theme.text }]}>Errands</Text>
+            <Text style={[styles.title, { color: theme.text }]}>Airands</Text>
             <Text style={[styles.subtitle, { color: theme.text + "80" }]}>
               {isSignUp ? "Create your account" : "Welcome back"}
             </Text>
@@ -345,9 +453,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingContent: {
+    alignItems: "center",
+    padding: 30,
+  },
+  loadingLogo: {
+    width: 120,
+    height: 120,
+    marginBottom: 30,
+  },
+  dotsContainer: {
+    flexDirection: "row",
+    marginBottom: 30,
+  },
+  loadingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  progressBarContainer: {
+    height: 4,
+    width: '80%',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  progressBar: {
+    height: '100%',
+  },
+  hintText: {
+    fontSize: 14,
+    fontStyle: 'italic',
   },
   scrollContent: {
     flexGrow: 1,
@@ -465,7 +608,7 @@ const styles = StyleSheet.create({
 })
 
 export default AuthScreen
+
 function signInWithGoogle(idToken: string, userType: string) {
   throw new Error("Function not implemented.")
 }
-
