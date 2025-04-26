@@ -1,4 +1,4 @@
-import type { export export User } from "firebase/auth"
+import type { User } from "firebase/auth"
 
 export type UserType = "buyer" | "seller" | "runner" | "admin"
 

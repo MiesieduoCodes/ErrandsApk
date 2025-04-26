@@ -8,6 +8,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 type ThemeMode = "light" | "dark" | "system"
 
 export interface ThemeColors {
+  shadow: ColorValue | undefined
+  textSecondary: string
+  dark: any
   type: string
   primary: string
   secondary: string

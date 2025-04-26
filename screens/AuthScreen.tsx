@@ -14,7 +14,8 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  Easing
+  Easing,
+  Dimensions
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
@@ -26,6 +27,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { RootStackParamList } from "../types"
 
 WebBrowser.maybeCompleteAuthSession()
+
+const { width } = Dimensions.get("window")
 
 type AuthScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList>
@@ -41,6 +44,8 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   // Animation values
   const dotAnimation = useRef(new Animated.Value(0)).current
   const progressAnim = useRef(new Animated.Value(0)).current
+  const formAnim = useRef(new Animated.Value(0)).current
+  const buttonScale = useRef(new Animated.Value(1)).current
 
   // Form fields
   const [name, setName] = useState("")
@@ -56,6 +61,14 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   })
 
   useEffect(() => {
+    // Form entry animation
+    Animated.timing(formAnim, {
+      toValue: 1,
+      duration: 800,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+
     if (isLoading) {
       // Logo pulse animation
       Animated.loop(
@@ -97,7 +110,6 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
 
   useEffect(() => {
     if (user) {
-      // Navigate to Main screen with the appropriate tab based on user type
       navigation.reset({
         index: 0,
         routes: [{ name: "Main" }],
@@ -106,6 +118,20 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   }, [user, navigation])
 
   const handleAuth = async () => {
+    // Button press animation
+    Animated.sequence([
+      Animated.timing(buttonScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true
+      })
+    ]).start()
+
     if (isSignUp && (!name || !email || !phone || !password)) {
       Alert.alert("Error", "Please fill in all fields")
       return
@@ -120,11 +146,9 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
       setIsLoading(true)
 
       if (isSignUp) {
-        // Pass the selected userType to the register function
         await register(email, password, name, userType)
         Alert.alert("Success", "Account created successfully!")
       } else {
-        // Pass the selected userType to the login function to ensure proper redirection
         await login(email, password, userType)
       }
     } catch (error) {
@@ -152,7 +176,6 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   const handleGoogleSignIn = async (idToken: string) => {
     try {
       setIsLoading(true)
-      // Pass the selected userType to the Google sign-in function
       await signInWithGoogle(idToken, userType)
     } catch (error) {
       console.error("Google sign in error:", error)
@@ -245,7 +268,7 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
           </View>
           
           {/* Hint Text */}
-          <Text style={[styles.hintText, { color: theme.text + '80' }]}>
+          <Text style={[styles.hintText, { color: `${theme.text}80` }]}>
             This won't take long...
           </Text>
         </Animated.View>
@@ -255,37 +278,68 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <StatusBar style={isDark ? "light" : "dark"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.background }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
+          {/* Header with animated entry */}
+          <Animated.View style={[styles.header, {
+            opacity: formAnim,
+            transform: [{
+              translateY: formAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [50, 0],
+              })
+            }]
+          }]}>
+            <Image 
+              source={require("../assets/logo.png")} 
+              style={styles.logo} 
+              resizeMode="contain" 
+            />
             <Text style={[styles.title, { color: theme.text }]}>Airands</Text>
-            <Text style={[styles.subtitle, { color: theme.text + "80" }]}>
+            <Text style={[styles.subtitle, { color: `${theme.text}80` }]}>
               {isSignUp ? "Create your account" : "Welcome back"}
             </Text>
-          </View>
+          </Animated.View>
 
-          <View style={styles.userTypeContainer}>
+          {/* User Type Selector */}
+          <Animated.View style={[styles.userTypeContainer, {
+            opacity: formAnim,
+            transform: [{
+              translateY: formAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [30, 0],
+              })
+            }]
+          }]}>
             <TouchableOpacity
               style={[
                 styles.userTypeButton,
                 userType === "buyer" && styles.activeUserType,
                 {
                   borderBottomColor: userType === "buyer" ? theme.primary : theme.border,
+                  backgroundColor: userType === "buyer" ? `${theme.primary}20` : 'transparent',
                 },
               ]}
               onPress={() => setUserType("buyer")}
             >
+              <Ionicons 
+                name="person-outline" 
+                size={20} 
+                color={userType === "buyer" ? theme.primary : `${theme.text}80`} 
+              />
               <Text
                 style={[
                   styles.userTypeText,
                   userType === "buyer" && styles.activeUserTypeText,
-                  { color: userType === "buyer" ? theme.primary : theme.text + "80" },
+                  { color: userType === "buyer" ? theme.primary : `${theme.text}80` },
                 ]}
               >
                 Buyer
@@ -298,15 +352,21 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                 userType === "runner" && styles.activeUserType,
                 {
                   borderBottomColor: userType === "runner" ? theme.primary : theme.border,
+                  backgroundColor: userType === "runner" ? `${theme.primary}20` : 'transparent',
                 },
               ]}
               onPress={() => setUserType("runner")}
             >
+              <Ionicons 
+                name="bicycle-outline" 
+                size={20} 
+                color={userType === "runner" ? theme.primary : `${theme.text}80`} 
+              />
               <Text
                 style={[
                   styles.userTypeText,
                   userType === "runner" && styles.activeUserTypeText,
-                  { color: userType === "runner" ? theme.primary : theme.text + "80" },
+                  { color: userType === "runner" ? theme.primary : `${theme.text}80` },
                 ]}
               >
                 Runner
@@ -319,24 +379,75 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                 userType === "seller" && styles.activeUserType,
                 {
                   borderBottomColor: userType === "seller" ? theme.primary : theme.border,
+                  backgroundColor: userType === "seller" ? `${theme.primary}20` : 'transparent',
                 },
               ]}
               onPress={() => setUserType("seller")}
             >
+              <Ionicons 
+                name="storefront-outline" 
+                size={20} 
+                color={userType === "seller" ? theme.primary : `${theme.text}80`} 
+              />
               <Text
                 style={[
                   styles.userTypeText,
                   userType === "seller" && styles.activeUserTypeText,
-                  { color: userType === "seller" ? theme.primary : theme.text + "80" },
+                  { color: userType === "seller" ? theme.primary : `${theme.text}80` },
                 ]}
               >
                 Seller
               </Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
 
-          <View style={styles.formContainer}>
+          {/* Form with staggered animations */}
+          <Animated.View style={[styles.formContainer, {
+            opacity: formAnim,
+            transform: [{
+              translateY: formAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [40, 0],
+              })
+            }]
+          }]}>
             {isSignUp && (
+              <Animated.View style={{
+                opacity: formAnim,
+                transform: [{
+                  translateX: formAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-20, 0],
+                  })
+                }]
+              }}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.card,
+                      color: theme.text,
+                    },
+                  ]}
+                  placeholder="Full Name"
+                  placeholderTextColor={`${theme.text}50`}
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                />
+              </Animated.View>
+            )}
+
+            <Animated.View style={{
+              opacity: formAnim,
+              transform: [{
+                translateX: formAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-20, 0],
+                })
+              }]
+            }}>
               <TextInput
                 style={[
                   styles.input,
@@ -346,32 +457,52 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                     color: theme.text,
                   },
                 ]}
-                placeholder="Full Name"
-                placeholderTextColor={theme.text + "50"}
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
+                placeholder="Email Address"
+                placeholderTextColor={`${theme.text}50`}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
-            )}
-
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.card,
-                  color: theme.text,
-                },
-              ]}
-              placeholder="Email Address"
-              placeholderTextColor={theme.text + "50"}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            </Animated.View>
 
             {isSignUp && (
+              <Animated.View style={{
+                opacity: formAnim,
+                transform: [{
+                  translateX: formAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-20, 0],
+                  })
+                }]
+              }}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.card,
+                      color: theme.text,
+                    },
+                  ]}
+                  placeholder="Phone Number"
+                  placeholderTextColor={`${theme.text}50`}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </Animated.View>
+            )}
+
+            <Animated.View style={{
+              opacity: formAnim,
+              transform: [{
+                translateX: formAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-20, 0],
+                })
+              }]
+            }}>
               <TextInput
                 style={[
                   styles.input,
@@ -381,63 +512,80 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                     color: theme.text,
                   },
                 ]}
-                placeholder="Phone Number"
-                placeholderTextColor={theme.text + "50"}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
+                placeholder="Password"
+                placeholderTextColor={`${theme.text}50`}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
               />
-            )}
-
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.card,
-                  color: theme.text,
-                },
-              ]}
-              placeholder="Password"
-              placeholderTextColor={theme.text + "50"}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            </Animated.View>
 
             {!isSignUp && (
-              <TouchableOpacity style={styles.forgotPasswordContainer} onPress={navigateToPasswordReset}>
-                <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>Forgot Password ?</Text>
+              <TouchableOpacity 
+                style={styles.forgotPasswordContainer} 
+                onPress={navigateToPasswordReset}
+              >
+                <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>Forgot Password?</Text>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={handleAuth}>
-              <Text style={styles.buttonText}>{isSignUp ? "Sign Up" : "Sign In"}</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+              <TouchableOpacity 
+                style={[
+                  styles.button, 
+                  { 
+                    backgroundColor: theme.primary,
+                    shadowColor: theme.primary,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 6,
+                  }
+                ]} 
+                onPress={handleAuth}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.buttonText}>{isSignUp ? "Sign Up" : "Sign In"}</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
             <View style={styles.dividerContainer}>
               <View style={[styles.divider, { backgroundColor: theme.border }]} />
-              <Text style={[styles.dividerText, { color: theme.text + "80" }]}>OR</Text>
+              <Text style={[styles.dividerText, { color: `${theme.text}80` }]}>OR</Text>
               <View style={[styles.divider, { backgroundColor: theme.border }]} />
             </View>
 
             <TouchableOpacity
-              style={[styles.googleButton, { borderColor: theme.border, backgroundColor: theme.card }]}
+              style={[
+                styles.googleButton, 
+                { 
+                  borderColor: theme.border, 
+                  backgroundColor: theme.card,
+                  shadowColor: theme.shadow,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 3,
+                }
+              ]}
               onPress={handleGoogleAuth}
+              activeOpacity={0.8}
             >
               <Ionicons name="logo-google" size={20} color={theme.text} />
-              <Text style={[styles.googleButtonText, { color: theme.text }]}>Sign in with Google</Text>
+              <Text style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</Text>
             </TouchableOpacity>
 
             <View style={styles.toggleContainer}>
-              <Text style={[styles.toggleText, { color: theme.text + "80" }]}>
-                {isSignUp ? "Already have an account ?" : "Don't have an account ?"}
+              <Text style={[styles.toggleText, { color: `${theme.text}80` }]}>
+                {isSignUp ? "Already have an account?" : "Don't have an account?"}
               </Text>
               <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
-                <Text style={[styles.toggleButton, { color: theme.primary }]}>{isSignUp ? "Sign In" : "Sign Up"}</Text>
+                <Text style={[styles.toggleButton, { color: theme.primary }]}>
+                  {isSignUp ? "Sign In" : "Sign Up"}
+                </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -498,15 +646,15 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginTop: 60,
-    marginBottom: 30,
+    marginTop: 40,
+    marginBottom: 20,
   },
   logo: {
-    width: 230,
-    height: 230,
+    width: 150,
+    height: 150,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
     marginBottom: 6,
   },
@@ -515,51 +663,59 @@ const styles = StyleSheet.create({
   },
   userTypeContainer: {
     flexDirection: "row",
-    justifyContent: "center",
-    paddingHorizontal: 25,
-    marginBottom: 15,
+    justifyContent: "space-between",
+    marginHorizontal: 25,
+    marginBottom: 25,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   userTypeButton: {
     flex: 1,
     paddingVertical: 12,
     alignItems: "center",
     borderBottomWidth: 2,
-    marginHorizontal: 5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 10,
+    marginHorizontal: 4,
   },
   activeUserType: {
     borderBottomWidth: 2,
   },
   userTypeText: {
     fontSize: 16,
+    fontWeight: '500',
   },
   activeUserTypeText: {
     fontWeight: "600",
   },
   formContainer: {
-    paddingHorizontal: 30,
+    paddingHorizontal: 25,
   },
   input: {
-    height: 50,
+    height: 56,
     borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 15,
-    paddingHorizontal: 15,
+    borderRadius: 12,
+    marginBottom: 16,
+    paddingHorizontal: 18,
     fontSize: 16,
   },
   forgotPasswordContainer: {
     alignSelf: "flex-end",
-    marginBottom: 15,
+    marginBottom: 20,
   },
   forgotPasswordText: {
     fontSize: 14,
     fontWeight: "500",
   },
   button: {
-    height: 50,
-    borderRadius: 8,
+    height: 56,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 10,
+    marginBottom: 20,
   },
   buttonText: {
     fontSize: 16,
@@ -591,18 +747,20 @@ const styles = StyleSheet.create({
   dividerText: {
     paddingHorizontal: 10,
     fontSize: 14,
+    fontWeight: '500',
   },
   googleButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    height: 50,
-    borderRadius: 8,
+    height: 56,
+    borderRadius: 12,
     marginBottom: 15,
   },
   googleButtonText: {
     fontSize: 16,
+    fontWeight: '500',
     marginLeft: 10,
   },
 })

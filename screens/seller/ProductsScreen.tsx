@@ -1,773 +1,1156 @@
-"use client"
+import { ref, set, get, update, query, orderByChild, equalTo, push } from "firebase/database"
+import { database, auth } from "../firebase/config"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import type { UserType } from "../context/AuthContext"
 
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, ScrollView, Alert, Modal } from "react-native"
-import { useState, useEffect } from "react"
-import { StatusBar } from "expo-status-bar"
-import { Ionicons } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
-import { useAuth } from "../../context/AuthContext"
-import { useTheme } from "../../context/ThemeContext"
-import { sellerService } from "../../services/database"
-import { StackNavigationProp } from "@react-navigation/stack"
-import { RootStackParamList } from "../../navigation/types"
+// User Services
+export const userService = {
+  // Create or update user
+  async upsertUser(userData: {
+    firebaseUid: string
+    email: string
+    name?: string
+    photoUrl?: string
+    userType: UserType
+    phone?: string
+    isVerified?: boolean
+    verificationLevel?: number
+  }) {
+    const { firebaseUid, email, name, photoUrl, userType, phone, isVerified, verificationLevel } = userData
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  inStock: boolean;
-  quantity: number;
-}
-
-interface CategoryItem {
-  id: string;
-  label: string;
-}
-
-const ProductsScreen = () => {
-  const { user } = useAuth()
-  const { theme, isDark } = useTheme()
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>()
-
-  const [products, setProducts] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState("all")
-  const [isAddingProduct, setIsAddingProduct] = useState(false)
-  const [isEditingProduct, setIsEditingProduct] = useState(false)
-  const [currentProduct, setCurrentProduct] = useState<Product | null>(null)
-  const [productForm, setProductForm] = useState({
-    name: "",
-    price: "",
-    description: "",
-    category: "general",
-    inStock: true,
-    quantity: "10",
-  })
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false)
-  const [productToDelete, setProductToDelete] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!user) return
-    loadProducts()
-  }, [user])
-
-  const loadProducts = async () => {
     try {
-      setIsLoading(true)
-      if (!user) return;
-      const productsData = await sellerService.getSellerProducts(user.id)
-      setProducts(productsData as Product[])
+      await set(ref(database, `users/${firebaseUid}`), {
+        email,
+        name: name || "",
+        photoURL: photoUrl || "",
+        userType,
+        phone: phone || "",
+        isVerified: isVerified || false,
+        verificationLevel: verificationLevel || 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+
+      // Save user type to AsyncStorage for quick access
+      await AsyncStorage.setItem("userType", userType)
+
+      return { id: firebaseUid, ...userData }
     } catch (error) {
-      console.error("Error loading products:", error)
-      Alert.alert("Error", "Failed to load products. Please try again.")
-    } finally {
-      setIsLoading(false)
+      console.error("Error upserting user:", error)
+      throw error
     }
-  }
+  },
 
-  const handleAddProduct = () => {
-    if (!productForm.name || !productForm.price) {
-      Alert.alert("Error", "Product name and price are required")
-      return
-    }
-
-    const addProductAsync = async () => {
-      try {
-        if (!user) {
-          Alert.alert("Error", "User is not authenticated.")
-          return
-        }
-        
-        await sellerService.addProduct(user.id, {
-          name: productForm.name,
-          description: productForm.description,
-          price: Number.parseFloat(productForm.price),
-          category: productForm.category,
-          inStock: productForm.inStock,
-          quantity: Number.parseInt(productForm.quantity),
-        })
-
-        Alert.alert("Success", `${productForm.name} has been added to your inventory.`, [
-          {
-            text: "OK",
-            onPress: () => {
-              resetForm()
-              setIsAddingProduct(false)
-              loadProducts()
-            },
-          },
-        ])
-      } catch (error) {
-        console.error("Error adding product:", error)
-        Alert.alert("Error", "Failed to add product. Please try again.")
-      }
-    }
-
-    addProductAsync()
-  }
-
-  const handleEditProduct = () => {
-    if (!currentProduct || !productForm.name || !productForm.price) {
-      Alert.alert("Error", "Product name and price are required")
-      return
-    }
-
-    const editProductAsync = async () => {
-      try {
-        if (!user || !currentProduct) {
-          Alert.alert("Error", "User is not authenticated or product not selected.")
-          return
-        }
-        
-        await sellerService.updateProduct(user.id, currentProduct.id, {
-          name: productForm.name,
-          description: productForm.description,
-          price: Number.parseFloat(productForm.price),
-          category: productForm.category,
-          inStock: productForm.inStock,
-          quantity: Number.parseInt(productForm.quantity),
-        })
-
-        Alert.alert("Success", `${productForm.name} has been updated.`, [
-          {
-            text: "OK",
-            onPress: () => {
-              resetForm()
-              setIsEditingProduct(false)
-              loadProducts()
-            },
-          },
-        ])
-      } catch (error) {
-        console.error("Error updating product:", error)
-        Alert.alert("Error", "Failed to update product. Please try again.")
-      }
-    }
-
-    editProductAsync()
-  }
-
-  const handleDeleteProduct = async (productId: string) => {
+  // Get user by Firebase UID
+  async getUserByFirebaseUid(uid: string) {
     try {
-      if (!user) {
-        Alert.alert("Error", "User is not authenticated.")
-        return
+      const snapshot = await get(ref(database, `users/${uid}`))
+      if (snapshot.exists()) {
+        return {
+          id: uid,
+          ...snapshot.val(),
+        }
       }
-      
-      await sellerService.deleteProduct(productId)
-      Alert.alert("Success", "Product has been deleted.")
-      loadProducts()
+      return null
+    } catch (error) {
+      console.error("Error getting user:", error)
+      throw error
+    }
+  },
+
+  // Update user type
+  async updateUserType(uid: string, userType: UserType) {
+    try {
+      await update(ref(database, `users/${uid}`), {
+        userType,
+        updatedAt: new Date().toISOString(),
+      })
+
+      // Update AsyncStorage
+      await AsyncStorage.setItem("userType", userType)
+
+      return true
+    } catch (error) {
+      console.error("Error updating user type:", error)
+      throw error
+    }
+  },
+
+  // Update user profile
+  async updateUserProfile(uid: string, profileData: any) {
+    try {
+      await update(ref(database, `users/${uid}`), {
+        ...profileData,
+        updatedAt: new Date().toISOString(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Error updating user profile:", error)
+      throw error
+    }
+  },
+
+  // Get user settings
+  async getUserSettings(uid: string) {
+    try {
+      const snapshot = await get(ref(database, `userSettings/${uid}`))
+      if (snapshot.exists()) {
+        return snapshot.val()
+      }
+      return null
+    } catch (error) {
+      console.error("Error getting user settings:", error)
+      throw error
+    }
+  },
+
+  // Update user settings
+  async upsertUserSettings(uid: string, settings: any) {
+    try {
+      const userSettingsRef = ref(database, `userSettings/${uid}`)
+      const snapshot = await get(userSettingsRef)
+
+      if (snapshot.exists()) {
+        await update(userSettingsRef, {
+          ...settings,
+          updatedAt: new Date().toISOString(),
+        })
+      } else {
+        await set(userSettingsRef, {
+          ...settings,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error updating user settings:", error)
+      throw error
+    }
+  },
+
+  // Get user saved addresses
+  async getUserAddresses(uid: string) {
+    try {
+      const snapshot = await get(ref(database, `userAddresses/${uid}`))
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const addresses: Array<{
+        id: string
+        name: string
+        address: string
+        latitude: number
+        longitude: number
+        isDefault?: boolean
+        createdAt?: string
+      }> = []
+
+      snapshot.forEach((childSnapshot) => {
+        addresses.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val(),
+        })
+      })
+
+      return addresses
+    } catch (error) {
+      console.error("Error getting user addresses:", error)
+      throw error
+    }
+  },
+
+  // Add user address
+  async addUserAddress(
+    uid: string,
+    address: {
+      name: string
+      address: string
+      latitude: number
+      longitude: number
+      isDefault?: boolean
+    },
+  ) {
+    try {
+      const addressesRef = ref(database, `userAddresses/${uid}`)
+      const newAddressRef = push(addressesRef)
+
+      await set(newAddressRef, {
+        ...address,
+        createdAt: new Date().toISOString(),
+      })
+
+      // If this is the default address, update other addresses
+      if (address.isDefault) {
+        const snapshot = await get(addressesRef)
+        if (snapshot.exists()) {
+          snapshot.forEach((childSnapshot) => {
+            if (childSnapshot.key !== newAddressRef.key) {
+              update(ref(database, `userAddresses/${uid}/${childSnapshot.key}`), {
+                isDefault: false,
+              })
+            }
+          })
+        }
+      }
+
+      return {
+        id: newAddressRef.key,
+        ...address,
+      }
+    } catch (error) {
+      console.error("Error adding user address:", error)
+      throw error
+    }
+  },
+
+  // Update user address
+  async updateUserAddress(
+    uid: string,
+    addressId: string,
+    address: {
+      name?: string
+      address?: string
+      latitude?: number
+      longitude?: number
+      isDefault?: boolean
+    },
+  ) {
+    try {
+      await update(ref(database, `userAddresses/${uid}/${addressId}`), {
+        ...address,
+        updatedAt: new Date().toISOString(),
+      })
+
+      // If this is the default address, update other addresses
+      if (address.isDefault) {
+        const addressesRef = ref(database, `userAddresses/${uid}`)
+        const snapshot = await get(addressesRef)
+        if (snapshot.exists()) {
+          snapshot.forEach((childSnapshot) => {
+            if (childSnapshot.key !== addressId) {
+              update(ref(database, `userAddresses/${uid}/${childSnapshot.key}`), {
+                isDefault: false,
+              })
+            }
+          })
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error updating user address:", error)
+      throw error
+    }
+  },
+
+  // Delete user address
+  async deleteUserAddress(uid: string, addressId: string) {
+    try {
+      await set(ref(database, `userAddresses/${uid}/${addressId}`), null)
+      return true
+    } catch (error) {
+      console.error("Error deleting user address:", error)
+      throw error
+    }
+  },
+
+  // Get user favorite runners
+  async getUserFavoriteRunners(uid: string) {
+    try {
+      const snapshot = await get(ref(database, `userFavorites/${uid}/runners`))
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const favoriteRunners: Array<{
+        id: string
+        name?: string
+        email?: string
+        photoURL?: string
+        userType?: string
+        [key: string]: any
+      }> = []
+
+      const promises: Promise<void>[] = []
+
+      snapshot.forEach((childSnapshot) => {
+        const runnerId = childSnapshot.key
+        promises.push(
+          this.getUserByFirebaseUid(runnerId).then((runner) => {
+            if (runner) {
+              favoriteRunners.push(runner)
+            }
+          }),
+        )
+      })
+
+      await Promise.all(promises)
+      return favoriteRunners
+    } catch (error) {
+      console.error("Error getting user favorite runners:", error)
+      throw error
+    }
+  },
+
+  // Add user favorite runner
+  async addUserFavoriteRunner(uid: string, runnerId: string) {
+    try {
+      await set(ref(database, `userFavorites/${uid}/runners/${runnerId}`), {
+        addedAt: new Date().toISOString(),
+      })
+      return true
+    } catch (error) {
+      console.error("Error adding user favorite runner:", error)
+      throw error
+    }
+  },
+
+  // Remove user favorite runner
+  async removeUserFavoriteRunner(uid: string, runnerId: string) {
+    try {
+      await set(ref(database, `userFavorites/${uid}/runners/${runnerId}`), null)
+      return true
+    } catch (error) {
+      console.error("Error removing user favorite runner:", error)
+      throw error
+    }
+  },
+}
+
+// Location Services
+export const locationService = {
+  // Update user location
+  async updateUserLocation(uid: string, location: { latitude: number; longitude: number }) {
+    try {
+      await update(ref(database, `users/${uid}`), {
+        location: {
+          ...location,
+          updatedAt: new Date().toISOString(),
+        },
+        updatedAt: new Date().toISOString(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Error updating user location:", error)
+      throw error
+    }
+  },
+
+  // Get nearby users
+  async getNearbyUsers(
+    latitude: number,
+    longitude: number,
+    radiusKm: number,
+    currentUserId: string,
+    userType?: UserType,
+  ) {
+    try {
+      // In a real app, you would use a geospatial query
+      // For Firebase Realtime Database, we'll fetch all users and filter client-side
+      const snapshot = await get(ref(database, "users"))
+
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const users: Array<{
+        id: string
+        distance: number
+        [key: string]: any
+      }> = []
+
+      snapshot.forEach((childSnapshot) => {
+        const user = childSnapshot.val()
+        const userId = childSnapshot.key
+
+        // Skip current user
+        if (userId === currentUserId) {
+          return
+        }
+
+        // Filter by user type if specified
+        if (userType && user.userType !== userType) {
+          return
+        }
+
+        // Skip users without location
+        if (!user.location) {
+          return
+        }
+
+        // Calculate distance (using Haversine formula)
+        const distance = calculateDistance(latitude, longitude, user.location.latitude, user.location.longitude)
+
+        // Only include users within the radius
+        if (distance <= radiusKm) {
+          users.push({
+            id: userId,
+            ...user,
+            distance,
+          })
+        }
+      })
+
+      // Sort by distance
+      return users.sort((a, b) => a.distance - b.distance)
+    } catch (error) {
+      console.error("Error getting nearby users:", error)
+      throw error
+    }
+  },
+
+  // Get nearby sellers
+  async getNearbySellers(latitude: number, longitude: number, radiusKm: number, currentUserId: string) {
+    return this.getNearbyUsers(latitude, longitude, radiusKm, currentUserId, "seller")
+  },
+
+  // Get nearby runners
+  async getNearbyRunners(latitude: number, longitude: number, radiusKm: number, currentUserId: string) {
+    return this.getNearbyUsers(latitude, longitude, radiusKm, currentUserId, "runner")
+  },
+}
+
+// Errand Services
+export const errandService = {
+  // Create new errand
+  async createErrand(errandData: {
+    buyerId: string
+    errandType: string
+    description: string
+    pickupLocation: {
+      latitude: number
+      longitude: number
+      address: string
+    }
+    dropoffLocation: {
+      latitude: number
+      longitude: number
+      address: string
+    }
+    priceEstimate?: number
+  }) {
+    try {
+      // Generate a random 6-character transaction code
+      const transactionCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+
+      const errandsRef = ref(database, "errands")
+      const newErrandRef = push(errandsRef)
+
+      const errand = {
+        buyerId: errandData.buyerId,
+        errandType: errandData.errandType,
+        description: errandData.description,
+        pickup: errandData.pickupLocation.address,
+        pickupLocation: {
+          latitude: errandData.pickupLocation.latitude,
+          longitude: errandData.pickupLocation.longitude,
+        },
+        dropoff: errandData.dropoffLocation.address,
+        dropoffLocation: {
+          latitude: errandData.dropoffLocation.latitude,
+          longitude: errandData.dropoffLocation.longitude,
+        },
+        priceEstimate: errandData.priceEstimate || 0,
+        status: "pending",
+        transactionCode,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      await set(newErrandRef, errand)
+
+      return {
+        id: newErrandRef.key,
+        transaction_code: transactionCode,
+        ...errand,
+      }
+    } catch (error) {
+      console.error("Error creating errand:", error)
+      throw error
+    }
+  },
+
+  // Get errand by transaction code
+  async getErrandByTransactionCode(code: string) {
+    try {
+      const errandsRef = ref(database, "errands")
+      const errandQuery = query(errandsRef, orderByChild("transactionCode"), equalTo(code))
+      const snapshot = await get(errandQuery)
+
+      if (snapshot.exists()) {
+        let errand = null
+        snapshot.forEach((childSnapshot) => {
+          errand = {
+            id: childSnapshot.key,
+            ...childSnapshot.val(),
+          }
+        })
+        return errand
+      }
+
+      return null
+    } catch (error) {
+      console.error("Error getting errand by code:", error)
+      throw error
+    }
+  },
+
+  // Get errands by user
+  async getErrandsByUser(userId: string, userType: UserType) {
+    try {
+      const errandsRef = ref(database, "errands")
+      let errandQuery
+
+      if (userType === "buyer") {
+        errandQuery = query(errandsRef, orderByChild("buyerId"), equalTo(userId))
+      } else if (userType === "runner") {
+        errandQuery = query(errandsRef, orderByChild("runnerId"), equalTo(userId))
+      } else {
+        // For sellers or admins, return all errands
+        errandQuery = errandsRef
+      }
+
+      const snapshot = await get(errandQuery)
+
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const errands: Array<{
+        id: string
+        status: string
+        createdAt: string
+        [key: string]: any
+      }> = []
+
+      snapshot.forEach((childSnapshot) => {
+        errands.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val(),
+        })
+      })
+
+      // Sort by creation date (newest first)
+      return errands.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    } catch (error) {
+      console.error("Error getting errands by user:", error)
+      throw error
+    }
+  },
+
+  // Update errand status
+  async updateErrandStatus(errandId: string, status: string, userId: string) {
+    try {
+      await update(ref(database, `errands/${errandId}`), {
+        status,
+        updatedAt: new Date().toISOString(),
+        ...(status === "completed" ? { completedAt: new Date().toISOString() } : {}),
+      })
+
+      // Add status history
+      const historyRef = push(ref(database, `errandStatusHistory`))
+      await set(historyRef, {
+        errandId,
+        status,
+        changedBy: userId,
+        createdAt: new Date().toISOString(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Error updating errand status:", error)
+      throw error
+    }
+  },
+
+  // Update errand with payment information
+  async updateErrandPayment(errandId: string, paymentId: string): Promise<void> {
+    try {
+      await update(ref(database, `errands/${errandId}`), {
+        paymentId,
+        updatedAt: new Date().toISOString(),
+      })
+    } catch (error) {
+      console.error("Error updating errand payment:", error)
+      throw error
+    }
+  },
+
+  // Get errand by ID
+  async getErrandById(errandId: string): Promise<any> {
+    try {
+      const errandRef = ref(database, `errands/${errandId}`)
+      const snapshot = await get(errandRef)
+
+      if (snapshot.exists()) {
+        return {
+          id: snapshot.key,
+          ...snapshot.val(),
+        }
+      }
+
+      return null
+    } catch (error) {
+      console.error("Error getting errand by ID:", error)
+      throw error
+    }
+  },
+
+  // Get recent errands
+  async getRecentErrands(userId: string, limit = 5) {
+    try {
+      const errandsRef = ref(database, "errands")
+      const errandQuery = query(errandsRef, orderByChild("buyerId"), equalTo(userId))
+      const snapshot = await get(errandQuery)
+
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const errands: Array<{
+        id: string
+        createdAt: string
+        [key: string]: any
+      }> = []
+
+      snapshot.forEach((childSnapshot) => {
+        errands.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val(),
+        })
+      })
+
+      // Sort by creation date (newest first) and limit
+      return errands.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit)
+    } catch (error) {
+      console.error("Error getting recent errands:", error)
+      throw error
+    }
+  },
+}
+
+// Seller Services
+export const sellerService = {
+  // Get seller products
+  async getSellerProducts(sellerId: string) {
+    try {
+      const productsRef = ref(database, `products`)
+      const productQuery = query(productsRef, orderByChild("sellerId"), equalTo(sellerId))
+      const snapshot = await get(productQuery)
+
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const products: Array<{
+        id: string
+        name: string
+        description: string
+        price: number
+        category: string
+        imageUrl?: string
+        imageUrls?: string[]
+        inStock: boolean
+        quantity?: number
+        [key: string]: any
+      }> = []
+
+      snapshot.forEach((childSnapshot) => {
+        products.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val(),
+        })
+      })
+
+      return products
+    } catch (error) {
+      console.error("Error getting seller products:", error)
+      throw error
+    }
+  },
+
+  // Add product
+  async addProduct(
+    sellerId: string,
+    product: {
+      name: string
+      description: string
+      price: number
+      category: string
+      imageUrl?: string
+      imageUrls?: string[]
+      inStock: boolean
+      quantity?: number
+    },
+  ) {
+    try {
+      const productsRef = ref(database, "products")
+      const newProductRef = push(productsRef)
+
+      await set(newProductRef, {
+        sellerId,
+        ...product,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+
+      return {
+        id: newProductRef.key,
+        sellerId,
+        ...product,
+      }
+    } catch (error) {
+      console.error("Error adding product:", error)
+      throw error
+    }
+  },
+
+  // Update product
+  async updateProduct(
+    productId: string,
+    id: string,
+    product: {
+      name?: string
+      description?: string
+      price?: number
+      category?: string
+      imageUrl?: string
+      imageUrls?: string[]
+      inStock?: boolean
+      quantity?: number
+    },
+  ) {
+    try {
+      await update(ref(database, `products/${productId}`), {
+        ...product,
+        updatedAt: new Date().toISOString(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Error updating product:", error)
+      throw error
+    }
+  },
+
+  // Delete product
+  async deleteProduct(productId?: string) {
+    try {
+      await set(ref(database, `products/${productId}`), null)
+      return true
     } catch (error) {
       console.error("Error deleting product:", error)
-      Alert.alert("Error", "Failed to delete product. Please try again.")
-    } finally {
-      setDeleteModalVisible(false)
-      setProductToDelete(null)
+      throw error
     }
-  }
+  },
 
-  const resetForm = () => {
-    setProductForm({
-      name: "",
-      price: "",
-      description: "",
-      category: "general",
-      inStock: true,
-      quantity: "10",
-    })
-    setCurrentProduct(null)
-  }
+  // Upload product image
+  async uploadProductImage(imageUri: string): Promise<string> {
+    try {
+      // Import Firebase storage functions
+      const { getStorage, ref: storageRef, uploadBytesResumable, getDownloadURL } = await import("firebase/storage")
+      const storage = getStorage()
 
-  const prepareEditForm = (product: Product) => {
-    setCurrentProduct(product)
-    setProductForm({
-      name: product.name,
-      price: product.price.toString(),
-      description: product.description,
-      category: product.category,
-      inStock: product.inStock,
-      quantity: product.quantity.toString(),
-    })
-    setIsEditingProduct(true)
-  }
+      // Create a unique filename
+      const filename = `product_images/${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+      const reference = storageRef(storage, filename)
 
-  const renderCategoryButton = (id: string, label: string) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryButton,
-        id === activeCategory && styles.activeCategoryButton,
-        { borderColor: theme.border, backgroundColor: id === activeCategory ? theme.primary : theme.card },
-      ]}
-      onPress={() => setActiveCategory(id)}
-    >
-      <Text
-        style={[
-          styles.categoryButtonText,
-          { color: id === activeCategory ? "#fff" : theme.text },
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  )
+      // Fetch the image and convert to blob
+      const response = await fetch(imageUri)
+      const blob = await response.blob()
 
-  const filteredProducts =
-    activeCategory === "all" 
-      ? products 
-      : products.filter((product) => product.category === activeCategory)
+      // Upload the blob
+      const uploadTask = await uploadBytesResumable(reference, blob)
 
-  const renderProductItem = ({ item }: { item: Product }) => (
-    <View style={[styles.productItem, { borderColor: theme.border, backgroundColor: theme.card }]}>
-      <View style={styles.productHeader}>
-        <Text style={[styles.productName, { color: theme.text }]}>{item.name}</Text>
-        <View style={styles.productActions}>
-          <TouchableOpacity onPress={() => prepareEditForm(item)}>
-            <Ionicons name="create-outline" size={20} color={theme.text} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => {
-              setProductToDelete(item.id)
-              setDeleteModalVisible(true)
-            }}
-            style={{ marginLeft: 15 }}
-          >
-            <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.productStockRow}>
-        <View
-          style={[
-            styles.stockIndicator,
-            { backgroundColor: item.inStock ? "#34D186" : "#FF6B6B" },
-          ]}
-        >
-          <Text style={[styles.stockText, { color: "#fff" }]}>
-            {item.inStock ? "In Stock" : "Out of Stock"}
-          </Text>
-        </View>
-        <Text style={[styles.productCategory, { color: theme.text + "80" }]}>
-          {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
-        </Text>
-      </View>
-      {item.description ? (
-        <Text style={[styles.productDescription, { color: theme.text }]} numberOfLines={2}>
-          {item.description}
-        </Text>
-      ) : null}
-      <View style={styles.productFooter}>
-        <Text style={[styles.productPrice, { color: theme.text }]}>
-          ₦{item.price.toFixed(2)}
-        </Text>
-        <Text style={[styles.productQuantity, { color: theme.text + "80" }]}>
-          Qty: {item.quantity}
-        </Text>
-      </View>
-    </View>
-  )
+      // Get download URL
+      const downloadURL = await getDownloadURL(uploadTask.ref)
 
-  const categories: CategoryItem[] = [
-    { id: "all", label: "All" },
-    { id: "general", label: "General" },
-    { id: "food", label: "Food" },
-    { id: "electronics", label: "Electronics" },
-    { id: "clothing", label: "Clothing" },
-  ]
+      return downloadURL
+    } catch (error) {
+      console.error("Error uploading product image:", error)
+      throw error
+    }
+  },
 
-  if (isLoading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Loading Products...</Text>
-      </View>
-    )
-  }
+  // Get seller orders
+  async getSellerOrders(sellerId: string) {
+    try {
+      const ordersRef = ref(database, `orders`)
+      const orderQuery = query(ordersRef, orderByChild("sellerId"), equalTo(sellerId))
+      const snapshot = await get(orderQuery)
 
-  return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar style={isDark ? "light" : "dark"} />
+      if (!snapshot.exists()) {
+        return []
+      }
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={deleteModalVisible}
-        onRequestClose={() => setDeleteModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Delete Product</Text>
-            <Text style={[styles.modalText, { color: theme.text }]}>
-              Are you sure you want to delete this product? This action cannot be undone.
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: theme.secondary }]}
-                onPress={() => setDeleteModalVisible(false)}
-              >
-                <Text style={[styles.modalButtonText, { color: theme.text }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#FF6B6B" }]}
-                onPress={() => productToDelete && handleDeleteProduct(productToDelete)}
-              >
-                <Text style={styles.modalButtonText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      const orders: Array<{
+        id: string
+        status: string
+        createdAt: string
+        total: number
+        [key: string]: any
+      }> = []
 
-      {/* Product List View */}
-      {!isAddingProduct && !isEditingProduct ? (
-        <>
-          <View style={[styles.header, { backgroundColor: theme.primary }]}>
-            <Text style={styles.headerTitle}>My Products</Text>
-            <TouchableOpacity 
-              style={styles.addButton} 
-              onPress={() => {
-                resetForm()
-                setIsAddingProduct(true)
-              }}
-            >
-              <Ionicons name="add" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+      snapshot.forEach((childSnapshot) => {
+        orders.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val(),
+        })
+      })
 
-          <View style={styles.categoriesContainer}>
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={categories}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => renderCategoryButton(item.id, item.label)}
-              contentContainerStyle={styles.categoriesList}
-            />
-          </View>
+      // Sort by creation date (newest first)
+      return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    } catch (error) {
+      console.error("Error getting seller orders:", error)
+      throw error
+    }
+  },
 
-          <FlatList
-            data={filteredProducts}
-            renderItem={renderProductItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.productsList}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="cube-outline" size={50} color={theme.text + "50"} />
-                <Text style={[styles.emptyText, { color: theme.text + "80" }]}>No products found</Text>
-                <TouchableOpacity
-                  style={[styles.addProductButton, { backgroundColor: theme.primary }]}
-                  onPress={() => {
-                    resetForm()
-                    setIsAddingProduct(true)
-                  }}
-                >
-                  <Text style={styles.addProductButtonText}>Add Product</Text>
-                </TouchableOpacity>
-              </View>
-            }
-          />
-        </>
-      ) : (
-        /* Add/Edit Product Form */
-        <ScrollView 
-          contentContainerStyle={[styles.addProductContainer, { backgroundColor: theme.background }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: theme.secondary }]}
-            onPress={() => {
-              resetForm()
-              isEditingProduct ? setIsEditingProduct(false) : setIsAddingProduct(false)
-            }}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
-          </TouchableOpacity>
+  // Update order status - THIS IS THE MISSING METHOD
+  async updateOrderStatus(orderId: string, newStatus: "pending" | "processing" | "ready" | "completed") {
+    try {
+      await update(ref(database, `orders/${orderId}`), {
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+        ...(newStatus === "completed" ? { completedAt: new Date().toISOString() } : {}),
+      })
 
-          <Text style={[styles.addProductTitle, { color: theme.text }]}>
-            {isEditingProduct ? "Edit Product" : "Add New Product"}
-          </Text>
+      // Add status history
+      const historyRef = push(ref(database, `orderStatusHistory`))
+      await set(historyRef, {
+        orderId,
+        status: newStatus,
+        changedBy: auth.currentUser?.uid || "unknown",
+        createdAt: new Date().toISOString(),
+      })
 
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Product Name *</Text>
-            <TextInput
-              style={[styles.input, { 
-                backgroundColor: theme.card, 
-                color: theme.text, 
-                borderColor: theme.border 
-              }]}
-              value={productForm.name}
-              onChangeText={(text) => setProductForm({ ...productForm, name: text })}
-              placeholder="Enter product name"
-              placeholderTextColor={theme.text + "50"}
-            />
-          </View>
+      return true
+    } catch (error) {
+      console.error("Error updating order status:", error)
+      throw error
+    }
+  },
 
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Price (₦) *</Text>
-            <TextInput
-              style={[styles.input, { 
-                backgroundColor: theme.card, 
-                color: theme.text, 
-                borderColor: theme.border 
-              }]}
-              value={productForm.price}
-              onChangeText={(text) => setProductForm({ ...productForm, price: text })}
-              placeholder="Enter price"
-              placeholderTextColor={theme.text + "50"}
-              keyboardType="numeric"
-            />
-          </View>
+  // Get sales summary
+  async getSellerSalesSummary(sellerId: string) {
+    try {
+      const orders = await this.getSellerOrders(sellerId)
 
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Category</Text>
-            <View style={styles.categoryContainer}>
-              {["general", "food", "electronics", "clothing"].map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  style={[
-                    styles.categoryOption,
-                    {
-                      borderColor: theme.border,
-                      backgroundColor: productForm.category === category ? theme.primary : theme.card,
-                    },
-                  ]}
-                  onPress={() => setProductForm({ ...productForm, category })}
-                >
-                  <Text
-                    style={[
-                      styles.categoryOptionText,
-                      { color: productForm.category === category ? "#fff" : theme.text },
-                    ]}
-                  >
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+      // Calculate summary
+      const totalSales = orders.reduce((total, order) => {
+        if (order.status === "completed") {
+          return total + order.total
+        }
+        return total
+      }, 0)
 
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Quantity</Text>
-            <TextInput
-              style={[styles.input, { 
-                backgroundColor: theme.card, 
-                color: theme.text, 
-                borderColor: theme.border 
-              }]}
-              value={productForm.quantity}
-              onChangeText={(text) => setProductForm({ ...productForm, quantity: text })}
-              placeholder="Enter quantity"
-              placeholderTextColor={theme.text + "50"}
-              keyboardType="numeric"
-            />
-          </View>
+      const totalOrders = orders.filter((order) => order.status === "completed").length
 
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Stock Status</Text>
-            <TouchableOpacity
-              style={[
-                styles.stockToggle,
-                {
-                  backgroundColor: productForm.inStock ? theme.primary + "20" : "#FF6B6B" + "20",
-                  borderColor: productForm.inStock ? theme.primary : "#FF6B6B",
-                },
-              ]}
-              onPress={() => setProductForm({ ...productForm, inStock: !productForm.inStock })}
-            >
-              <Ionicons
-                name={productForm.inStock ? "checkmark-circle" : "close-circle"}
-                size={24}
-                color={productForm.inStock ? theme.primary : "#FF6B6B"}
-              />
-              <Text 
-                style={[
-                  styles.stockToggleText, 
-                  { color: productForm.inStock ? theme.primary : "#FF6B6B" }
-                ]}
-              >
-                {productForm.inStock ? "In Stock" : "Out of Stock"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+      // Get today's sales
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
 
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Description</Text>
-            <TextInput
-              style={[
-                styles.input,
-                styles.textArea,
-                { 
-                  backgroundColor: theme.card, 
-                  color: theme.text, 
-                  borderColor: theme.border 
-                }
-              ]}
-              value={productForm.description}
-              onChangeText={(text) => setProductForm({ ...productForm, description: text })}
-              placeholder="Enter product description"
-              placeholderTextColor={theme.text + "50"}
-              multiline
-              numberOfLines={4}
-            />
-          </View>
+      const todaySales = orders.reduce((total, order) => {
+        const orderDate = new Date(order.createdAt)
+        if (order.status === "completed" && orderDate >= today) {
+          return total + order.total
+        }
+        return total
+      }, 0)
 
-          <TouchableOpacity
-            style={[styles.submitButton, { backgroundColor: theme.primary }]}
-            onPress={isEditingProduct ? handleEditProduct : handleAddProduct}
-          >
-            <Text style={styles.submitButtonText}>
-              {isEditingProduct ? "Update Product" : "Add Product"}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      )}
-    </View>
-  )
+      // Get pending orders
+      const pendingOrders = orders.filter((order) => ["pending", "processing"].includes(order.status)).length
+
+      return {
+        totalSales,
+        totalOrders,
+        todaySales,
+        pendingOrders,
+      }
+    } catch (error) {
+      console.error("Error getting sales summary:", error)
+      throw error
+    }
+  },
+
+  // Get inventory alerts
+  async getInventoryAlerts(sellerId: string) {
+    try {
+      const products = await this.getSellerProducts(sellerId)
+
+      // Find products with low inventory
+      const lowInventory = products.filter((product) => {
+        return product.quantity !== undefined && product.quantity <= 5 && product.inStock
+      })
+
+      // Find out of stock products
+      const outOfStock = products.filter((product) => !product.inStock)
+
+      return {
+        lowInventory,
+        outOfStock,
+      }
+    } catch (error) {
+      console.error("Error getting inventory alerts:", error)
+      throw error
+    }
+  },
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  categoriesContainer: {
-    paddingVertical: 15,
-  },
-  categoriesList: {
-    paddingHorizontal: 20,
-  },
-  categoryButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
-    borderWidth: 1,
-  },
-  activeCategoryButton: {
-    borderColor: "transparent",
-  },
-  categoryButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  productsList: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  productItem: {
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-  },
-  productHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: "600",
-    flex: 1,
-  },
-  productActions: {
-    flexDirection: "row",
-  },
-  productStockRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  stockIndicator: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 10,
-  },
-  stockText: {
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  productCategory: {
-    fontSize: 12,
-  },
-  productDescription: {
-    fontSize: 14,
-    marginBottom: 10,
-  },
-  productFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  productPrice: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  productQuantity: {
-    fontSize: 12,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 30,
-    marginTop: 50,
-  },
-  emptyText: {
-    fontSize: 16,
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  addProductButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  addProductButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  addProductContainer: {
-    padding: 20,
-    marginTop: 37,
-    paddingBottom: 40,
-  },
-  backButton: {
-    padding: 10,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-    marginBottom: 20,
-  },
-  addProductTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 30,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 8,
-    fontWeight: "500",
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: "top",
-  },
-  categoryContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -5,
-  },
-  categoryOption: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    margin: 5,
-  },
-  categoryOptionText: {
-    fontSize: 14,
-  },
-  stockToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  stockToggleText: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 10,
-  },
-  submitButton: {
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  submitButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    width: "100%",
-    borderRadius: 10,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 15,
-  },
-  modalText: {
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  modalButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 5,
-    marginLeft: 10,
-  },
-  modalButtonText: {
-    color: "#fff",
-    fontWeight: "500",
-  },
-})
+// Runner Services
+export const runnerService = {
+  // Update runner availability
+  async updateRunnerAvailability(runnerId: string, isAvailable: boolean) {
+    try {
+      await update(ref(database, `users/${runnerId}`), {
+        isAvailable,
+        updatedAt: new Date().toISOString(),
+      })
 
-export default ProductsScreen
+      return true
+    } catch (error) {
+      console.error("Error updating runner availability:", error)
+      throw error
+    }
+  },
+
+  // Get available errands for runner
+  async getAvailableErrands(runnerId: string, latitude: number, longitude: number, radiusKm = 10) {
+    try {
+      const errandsRef = ref(database, "errands")
+      const errandQuery = query(errandsRef, orderByChild("status"), equalTo("pending"))
+      const snapshot = await get(errandQuery)
+
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const errands: Array<{
+        id: string
+        distance: number
+        [key: string]: any
+      }> = []
+
+      snapshot.forEach((childSnapshot) => {
+        const errand = childSnapshot.val()
+
+        // Skip errands that already have a runner
+        if (errand.runnerId) {
+          return
+        }
+
+        // Calculate distance to pickup location
+        const distance = calculateDistance(
+          latitude,
+          longitude,
+          errand.pickupLocation.latitude,
+          errand.pickupLocation.longitude,
+        )
+
+        // Only include errands within the radius
+        if (distance <= radiusKm) {
+          errands.push({
+            id: childSnapshot.key,
+            ...errand,
+            distance,
+          })
+        }
+      })
+
+      // Sort by distance
+      return errands.sort((a, b) => a.distance - b.distance)
+    } catch (error) {
+      console.error("Error getting available errands:", error)
+      throw error
+    }
+  },
+
+  // Accept errand
+  async acceptErrand(errandId: string, runnerId: string) {
+    try {
+      // Check if errand is still available
+      const errand = await errandService.getErrandById(errandId)
+      if (!errand || errand.status !== "pending" || errand.runnerId) {
+        throw new Error("Errand is no longer available")
+      }
+
+      // Update errand with runner ID and status
+      await update(ref(database, `errands/${errandId}`), {
+        runnerId,
+        status: "accepted",
+        updatedAt: new Date().toISOString(),
+      })
+
+      // Add status history
+      const historyRef = push(ref(database, `errandStatusHistory`))
+      await set(historyRef, {
+        errandId,
+        status: "accepted",
+        changedBy: runnerId,
+        createdAt: new Date().toISOString(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Error accepting errand:", error)
+      throw error
+    }
+  },
+
+  // Get runner's daily earnings
+  async getRunnerDailyEarnings(runnerId: string) {
+    try {
+      // Get completed errands for today
+      const errandsRef = ref(database, "errands")
+      const errandQuery = query(errandsRef, orderByChild("runnerId"), equalTo(runnerId))
+      const snapshot = await get(errandQuery)
+
+      if (!snapshot.exists()) {
+        return {
+          today: 0,
+          week: 0,
+          month: 0,
+          total: 0,
+          completedToday: 0,
+          completedTotal: 0,
+        }
+      }
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+      oneWeekAgo.setHours(0, 0, 0, 0)
+
+      const oneMonthAgo = new Date()
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+      oneMonthAgo.setHours(0, 0, 0, 0)
+
+      let todayEarnings = 0
+      let weekEarnings = 0
+      let monthEarnings = 0
+      let totalEarnings = 0
+      let completedToday = 0
+      let completedTotal = 0
+
+      snapshot.forEach((childSnapshot) => {
+        const errand = childSnapshot.val()
+
+        if (errand.status === "completed") {
+          const completedAt = new Date(errand.completedAt || errand.updatedAt)
+          const earnings = errand.priceEstimate || 0
+
+          totalEarnings += earnings
+          completedTotal++
+
+          if (completedAt >= today) {
+            todayEarnings += earnings
+            completedToday++
+          }
+
+          if (completedAt >= oneWeekAgo) {
+            weekEarnings += earnings
+          }
+
+          if (completedAt >= oneMonthAgo) {
+            monthEarnings += earnings
+          }
+        }
+      })
+
+      return {
+        today: todayEarnings,
+        week: weekEarnings,
+        month: monthEarnings,
+        total: totalEarnings,
+        completedToday,
+        completedTotal,
+      }
+    } catch (error) {
+      console.error("Error getting runner earnings:", error)
+      throw error
+    }
+  },
+
+  // Get runner's pending errands
+  async getRunnerPendingErrands(runnerId: string) {
+    try {
+      const errandsRef = ref(database, "errands")
+      const errandQuery = query(errandsRef, orderByChild("runnerId"), equalTo(runnerId))
+      const snapshot = await get(errandQuery)
+
+      if (!snapshot.exists()) {
+        return []
+      }
+
+      const pendingErrands: Array<{
+        id: string
+        status: string
+        [key: string]: any
+      }> = []
+
+      snapshot.forEach((childSnapshot) => {
+        const errand = childSnapshot.val()
+
+        if (["accepted", "in_progress"].includes(errand.status)) {
+          pendingErrands.push({
+            id: childSnapshot.key,
+            ...errand,
+          })
+        }
+      })
+
+      return pendingErrands
+    } catch (error) {
+      console.error("Error getting pending errands:", error)
+      throw error
+    }
+  },
+}
+
+// Helper function to calculate distance between two coordinates using Haversine formula
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371 // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1)
+  const dLon = deg2rad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  const distance = R * c // Distance in km
+  return distance
+}
+
+function deg2rad(deg: number): number {
+  return deg * (Math.PI / 180)
+}
+
+// Helper function to get the current user's database ID
+export async function getCurrentUserId() {
+  const currentUser = auth.currentUser
+  if (!currentUser) {
+    throw new Error("No authenticated user")
+  }
+
+  const user = await userService.getUserByFirebaseUid(currentUser.uid)
+  if (!user) {
+    throw new Error("User not found in database")
+  }
+
+  return user.id
+}
+
+export default {
+  userService,
+  locationService,
+  errandService,
+  sellerService,
+  runnerService,
+  getCurrentUserId,
+}

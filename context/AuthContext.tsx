@@ -18,12 +18,11 @@ import type { UserType } from "../types"
 
 // Define the User type
 export interface User {
-  [x: string]: string | undefined
   uid: string
   id: string
-  email: string | null
-  displayName: string | null
-  photoURL: string | null
+  email: string | undefined
+  displayName: string | undefined
+  photoURL: string | undefined
   userType: UserType
   isVerified?: boolean
 }
@@ -77,9 +76,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser({
               uid: firebaseUser.uid,
               id: userData.id,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
+              email: firebaseUser.email || undefined,
+              displayName: firebaseUser.displayName || undefined,
+              photoURL: firebaseUser.photoURL || undefined,
               userType: userData.userType || "buyer",
               isVerified: userData.isVerified,
             })
@@ -103,9 +102,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser({
               uid: firebaseUser.uid,
               id: newUser.id,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
+              email: firebaseUser.email || undefined,
+              displayName: firebaseUser.displayName || undefined,
+              photoURL: firebaseUser.photoURL || undefined,
               userType: "buyer",
               isVerified: false,
             })
@@ -267,7 +266,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Update local user state
         setUser({
           ...user,
-          uid: user.uid, // Include uid when updating
           displayName: data.displayName || user.displayName,
           photoURL: data.photoURL || user.photoURL,
         })

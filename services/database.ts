@@ -710,15 +710,17 @@ export const sellerService = {
 
   // Update product
   async updateProduct(
-productId: string, id: string, product: {
-  name?: string
-  description?: string
-  price?: number
-  category?: string
-  imageUrl?: string
-  inStock?: boolean
-  quantity?: number
-},
+    productId: string,
+    id: string,
+    product: {
+      name?: string
+      description?: string
+      price?: number
+      category?: string
+      imageUrl?: string
+      inStock?: boolean
+      quantity?: number
+    },
   ) {
     try {
       await update(ref(database, `products/${productId}`), {
@@ -740,6 +742,34 @@ productId: string, id: string, product: {
       return true
     } catch (error) {
       console.error("Error deleting product:", error)
+      throw error
+    }
+  },
+
+  // Upload product image
+  async uploadProductImage(imageUri: string): Promise<string> {
+    try {
+      // Import Firebase storage functions
+      const { getStorage, ref: storageRef, uploadBytesResumable, getDownloadURL } = await import("firebase/storage")
+      const storage = getStorage()
+
+      // Create a unique filename
+      const filename = `product_images/${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+      const reference = storageRef(storage, filename)
+
+      // Fetch the image and convert to blob
+      const response = await fetch(imageUri)
+      const blob = await response.blob()
+
+      // Upload the blob
+      const uploadTask = await uploadBytesResumable(reference, blob)
+
+      // Get download URL
+      const downloadURL = await getDownloadURL(uploadTask.ref)
+
+      return downloadURL
+    } catch (error) {
+      console.error("Error uploading product image:", error)
       throw error
     }
   },

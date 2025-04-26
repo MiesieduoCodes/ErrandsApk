@@ -11,7 +11,6 @@ import { storage } from "../firebase/config"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import type { StackNavigationProp } from "@react-navigation/stack"
 
-// Define navigation types
 type RootStackParamList = {
   SavedAddresses: undefined
   BusinessLocations: undefined
@@ -59,7 +58,6 @@ const SettingsScreen = () => {
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-
     if (status !== "granted") {
       Alert.alert("Permission needed", "Please grant permission to access your photos")
       return
@@ -73,23 +71,16 @@ const SettingsScreen = () => {
     })
 
     if (!result.canceled && result.assets && result.assets[0]) {
-      // Upload image to Firebase Storage
       const uri = result.assets[0].uri
       const response = await fetch(uri)
       const blob = await response.blob()
 
       if (user?.uid) {
         const storageRef = ref(storage, `profile_images/${user.uid}`)
-
         try {
           await uploadBytes(storageRef, blob)
           const downloadURL = await getDownloadURL(storageRef)
-
-          // Update user profile
-          await updateUserProfile({
-            photoURL: downloadURL,
-          })
-
+          await updateUserProfile({ photoURL: downloadURL })
           setProfileImage(downloadURL)
           Alert.alert("Success", "Profile image updated successfully")
         } catch (error) {
@@ -168,168 +159,181 @@ const SettingsScreen = () => {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor }]}>
-      {/* Profile Section */}
-      <View style={[styles.profileSection, { backgroundColor: cardColor }]}>
-        <TouchableOpacity onPress={pickImage}>
-          {profileImage ? (
-            <Image source={{ uri: profileImage }} style={styles.profileImage} />
-          ) : (
-            <View style={[styles.profileImagePlaceholder, { backgroundColor: accentColor }]}>
-              <Text style={styles.profileImagePlaceholderText}>
-                {user?.displayName?.charAt(0) || user?.email?.charAt(0) || "?"}
+    <View style={{ flex: 1, backgroundColor }}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Section */}
+        <View style={[styles.profileSection, { backgroundColor: cardColor }]}>
+          <TouchableOpacity onPress={pickImage}>
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={styles.profileImage} />
+            ) : (
+              <View style={[styles.profileImagePlaceholder, { backgroundColor: accentColor }]}>
+                <Text style={styles.profileImagePlaceholderText}>
+                  {user?.displayName?.charAt(0) || user?.email?.charAt(0) || "?"}
+                </Text>
+              </View>
+            )}
+            <View style={styles.editIconContainer}>
+              <MaterialIcons name="edit" size={16} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+
+          <Text style={[styles.userName, { color: textColor }]}>{user?.displayName || "User"}</Text>
+
+          {userType && (
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleBadgeText}>
+                {userType.charAt(0).toUpperCase() + userType.slice(1)}
               </Text>
             </View>
           )}
-          <View style={styles.editIconContainer}>
-            <MaterialIcons name="edit" size={16} color="#FFFFFF" />
+
+          <TouchableOpacity style={styles.editProfileButton} onPress={() => navigation.navigate("EditProfile")}>
+            <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Theme Toggle */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Appearance</Text>
+          <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
+            <Ionicons name={isDark ? "moon" : "sunny"} size={24} color={accentColor} />
+            <Text style={[styles.settingText, { color: textColor }]}>Dark Mode</Text>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: "#767577", true: "#FF6B00" }}
+              thumbColor={"#f4f3f4"}
+            />
           </View>
-        </TouchableOpacity>
+        </View>
 
-        <Text style={[styles.userName, { color: textColor }]}>{user?.displayName || "User"}</Text>
-
-        {userType && (
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>
-              {userType.charAt(0).toUpperCase() + userType.slice(1)}
-            </Text>
+        {/* Notifications */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Notifications</Text>
+          <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
+            <Ionicons name="notifications" size={24} color={accentColor} />
+            <Text style={[styles.settingText, { color: textColor }]}>Push Notifications</Text>
+            <Switch
+              value={pushNotifications}
+              onValueChange={setPushNotifications}
+              trackColor={{ false: "#767577", true: "#FF6B00" }}
+              thumbColor={"#f4f3f4"}
+            />
           </View>
-        )}
-
-        <TouchableOpacity style={styles.editProfileButton} onPress={() => navigation.navigate("EditProfile")}>
-          <Text style={styles.editProfileButtonText}>Edit Profile</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Theme Toggle */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: textColor }]}>Appearance</Text>
-        <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
-          <Ionicons name={isDark ? "moon" : "sunny"} size={24} color={accentColor} />
-          <Text style={[styles.settingText, { color: textColor }]}>Dark Mode</Text>
-          <Switch
-            value={isDark}
-            onValueChange={toggleTheme}
-            trackColor={{ false: "#767577", true: "#FF6B00" }}
-            thumbColor={"#f4f3f4"}
-          />
+          <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
+            <Ionicons name="mail" size={24} color={accentColor} />
+            <Text style={[styles.settingText, { color: textColor }]}>Email Notifications</Text>
+            <Switch
+              value={emailNotifications}
+              onValueChange={setEmailNotifications}
+              trackColor={{ false: "#767577", true: "#FF6B00" }}
+              thumbColor={"#f4f3f4"}
+            />
+          </View>
+          <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
+            <Ionicons name="chatbubble-ellipses" size={24} color={accentColor} />
+            <Text style={[styles.settingText, { color: textColor }]}>In-App Notifications</Text>
+            <Switch
+              value={inAppNotifications}
+              onValueChange={setInAppNotifications}
+              trackColor={{ false: "#767577", true: "#FF6B00" }}
+              thumbColor={"#f4f3f4"}
+            />
+          </View>
         </View>
-      </View>
 
-      {/* Notifications */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: textColor }]}>Notifications</Text>
-        <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
-          <Ionicons name="notifications" size={24} color={accentColor} />
-          <Text style={[styles.settingText, { color: textColor }]}>Push Notifications</Text>
-          <Switch
-            value={pushNotifications}
-            onValueChange={setPushNotifications}
-            trackColor={{ false: "#767577", true: "#FF6B00" }}
-            thumbColor={"#f4f3f4"}
-          />
-        </View>
-        <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
-          <Ionicons name="mail" size={24} color={accentColor} />
-          <Text style={[styles.settingText, { color: textColor }]}>Email Notifications</Text>
-          <Switch
-            value={emailNotifications}
-            onValueChange={setEmailNotifications}
-            trackColor={{ false: "#767577", true: "#FF6B00" }}
-            thumbColor={"#f4f3f4"}
-          />
-        </View>
-        <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
-          <Ionicons name="chatbubble-ellipses" size={24} color={accentColor} />
-          <Text style={[styles.settingText, { color: textColor }]}>In-App Notifications</Text>
-          <Switch
-            value={inAppNotifications}
-            onValueChange={setInAppNotifications}
-            trackColor={{ false: "#767577", true: "#FF6B00" }}
-            thumbColor={"#f4f3f4"}
-          />
-        </View>
-      </View>
+        {/* Role Specific Settings */}
+        {renderRoleSpecificSettings()}
 
-      {/* Role Specific Settings */}
-      {renderRoleSpecificSettings()}
-
-      {/* Payment Methods */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: textColor }]}>Payment</Text>
-        <TouchableOpacity
-          style={[styles.settingItem, { backgroundColor: cardColor }]}
-          onPress={() => navigation.navigate("PaymentMethods")}
-        >
-          <FontAwesome5 name="credit-card" size={24} color={accentColor} />
-          <Text style={[styles.settingText, { color: textColor }]}>Payment Methods</Text>
-          <MaterialIcons name="chevron-right" size={24} color={textColor} />
-        </TouchableOpacity>
-        {(userType === "seller" || userType === "runner") && (
+        {/* Payment Methods */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Payment</Text>
           <TouchableOpacity
             style={[styles.settingItem, { backgroundColor: cardColor }]}
-            onPress={() => navigation.navigate("Wallet")}
+            onPress={() => navigation.navigate("PaymentMethods")}
           >
-            <FontAwesome5 name="wallet" size={24} color={accentColor} />
-            <Text style={[styles.settingText, { color: textColor }]}>Wallet & Payouts</Text>
+            <FontAwesome5 name="credit-card" size={24} color={accentColor} />
+            <Text style={[styles.settingText, { color: textColor }]}>Payment Methods</Text>
             <MaterialIcons name="chevron-right" size={24} color={textColor} />
           </TouchableOpacity>
-        )}
-      </View>
+          {(userType === "seller" || userType === "runner") && (
+            <TouchableOpacity
+              style={[styles.settingItem, { backgroundColor: cardColor }]}
+              onPress={() => navigation.navigate("Wallet")}
+            >
+              <FontAwesome5 name="wallet" size={24} color={accentColor} />
+              <Text style={[styles.settingText, { color: textColor }]}>Wallet & Payouts</Text>
+              <MaterialIcons name="chevron-right" size={24} color={textColor} />
+            </TouchableOpacity>
+          )}
+        </View>
 
-      {/* Support */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: textColor }]}>Support</Text>
-        <TouchableOpacity
-          style={[styles.settingItem, { backgroundColor: cardColor }]}
-          onPress={() => navigation.navigate("HelpCenterScreen")}
-        >
-          <MaterialIcons name="help" size={24} color={accentColor} />
-          <Text style={[styles.settingText, { color: textColor }]}>Help Center</Text>
-          <MaterialIcons name="chevron-right" size={24} color={textColor} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.settingItem, { backgroundColor: cardColor }]}
-          onPress={() => navigation.navigate("About")}
-        >
-          <Ionicons name="information-circle" size={24} color={accentColor} />
-          <Text style={[styles.settingText, { color: textColor }]}>About</Text>
-          <MaterialIcons name="chevron-right" size={24} color={textColor} />
-        </TouchableOpacity>
-      </View>
+        {/* Support */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Support</Text>
+          <TouchableOpacity
+            style={[styles.settingItem, { backgroundColor: cardColor }]}
+            onPress={() => navigation.navigate("HelpCenterScreen")}
+          >
+            <MaterialIcons name="help" size={24} color={accentColor} />
+            <Text style={[styles.settingText, { color: textColor }]}>Help Center</Text>
+            <MaterialIcons name="chevron-right" size={24} color={textColor} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.settingItem, { backgroundColor: cardColor }]}
+            onPress={() => navigation.navigate("About")}
+          >
+            <Ionicons name="information-circle" size={24} color={accentColor} />
+            <Text style={[styles.settingText, { color: textColor }]}>About</Text>
+            <MaterialIcons name="chevron-right" size={24} color={textColor} />
+          </TouchableOpacity>
+        </View>
 
-      {/* Account */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: textColor }]}>Account</Text>
-        <TouchableOpacity
-          style={[styles.settingItem, { backgroundColor: cardColor }]}
-          onPress={() => navigation.navigate("SwitchRole")}
-        >
-          <MaterialIcons name="swap-horiz" size={24} color={accentColor} />
-          <Text style={[styles.settingText, { color: textColor }]}>Switch Role</Text>
-          <MaterialIcons name="chevron-right" size={24} color={textColor} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.settingItem, { backgroundColor: cardColor }]} onPress={handleLogout}>
-          <MaterialIcons name="logout" size={24} color="#FF3B30" />
-          <Text style={[styles.settingText, { color: "#FF3B30" }]}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Account */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Account</Text>
+          <TouchableOpacity
+            style={[styles.settingItem, { backgroundColor: cardColor }]}
+            onPress={() => navigation.navigate("SwitchRole")}
+          >
+            <MaterialIcons name="swap-horiz" size={24} color={accentColor} />
+            <Text style={[styles.settingText, { color: textColor }]}>Switch Role</Text>
+            <MaterialIcons name="chevron-right" size={24} color={textColor} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.settingItem, { backgroundColor: cardColor }]} 
+            onPress={handleLogout}
+          >
+            <MaterialIcons name="logout" size={24} color="#FF3B30" />
+            <Text style={[styles.settingText, { color: "#FF3B30" }]}>Logout</Text>
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.versionContainer}>
-        <Text style={[styles.versionText, { color: textColor }]}>Version 1.1.0</Text>
-      </View>
-    </ScrollView>
+        {/* Version */}
+        <View style={styles.versionContainer}>
+          <Text style={[styles.versionText, { color: textColor }]}>Version 1.1.0</Text>
+        </View>
+      </ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 100, // Space for tab bar
+    paddingHorizontal: 15,
+    paddingTop: 15,
   },
   profileSection: {
     alignItems: "center",
     padding: 20,
-    marginBottom: 10,
+    marginBottom: 20,
+    borderRadius: 10,
   },
   profileImage: {
     width: 100,
@@ -388,7 +392,6 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 20,
-    paddingHorizontal: 15,
   },
   sectionTitle: {
     fontSize: 18,
@@ -410,7 +413,7 @@ const styles = StyleSheet.create({
   },
   versionContainer: {
     alignItems: "center",
-    marginVertical: 20,
+    marginVertical: 30,
   },
   versionText: {
     fontSize: 14,

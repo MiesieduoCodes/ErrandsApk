@@ -1,6 +1,6 @@
 "use client"
-import { useEffect, useState, useRef } from "react"
-import { View, StyleSheet, TouchableOpacity, Text, Animated } from "react-native"
+import { useEffect, useState } from "react"
+import { View, StyleSheet, TouchableOpacity, Text } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { TabView, SceneMap, NavigationState, Route } from "react-native-tab-view"
 import { useWindowDimensions } from "react-native"
@@ -35,12 +35,12 @@ import { useAuth } from "../context/AuthContext"
 type TabRoute = Route & {
   icon: string;
   badge?: number;
-  isCenter?: boolean;
 }
 
 type TabBarProps = {
   navigationState: NavigationState<TabRoute>;
-  setIndex: (index: number) => void;
+  position: any;
+  jumpTo: (key: string) => void;
 }
 
 const MainTabNavigator = () => {
@@ -51,9 +51,6 @@ const MainTabNavigator = () => {
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [index, setIndex] = useState(0)
   const [routes, setRoutes] = useState<TabRoute[]>([])
-  
-  // Animation references for each tab
-  const tabAnimations = useRef<Animated.Value[]>([]).current
 
   useEffect(() => {
     if (!user) return
@@ -63,8 +60,8 @@ const MainTabNavigator = () => {
     if (user.userType === 'buyer') {
       userRoutes.push(
         { key: 'home', title: 'Home', icon: 'home' },
-        { key: 'errands', title: 'Airands', icon: 'list' },
-        { key: 'search', title: 'Search', icon: 'search', isCenter: true },
+        { key: 'errands', title: 'Errands', icon: 'list' },
+        { key: 'search', title: 'Search', icon: 'search' },
         { key: 'messages', title: 'Messages', icon: 'chatbubbles', badge: unreadMessages },
         { key: 'profile', title: 'Profile', icon: 'person' }
       )
@@ -72,46 +69,20 @@ const MainTabNavigator = () => {
       userRoutes.push(
         { key: 'dashboard', title: 'Dashboard', icon: 'grid' },
         { key: 'products', title: 'Products', icon: 'cube' },
-        { 
-          key: 'orders', 
-          title: 'Orders', 
-          icon: 'cart',
-          isCenter: true // Mark this as center tab
-        },
-        { 
-          key: 'messages', 
-          title: 'Messages', 
-          icon: 'chatbubbles', 
-          badge: unreadMessages 
-        },
+        { key: 'orders', title: 'Orders', icon: 'cart' },
+        { key: 'messages', title: 'Messages', icon: 'chatbubbles', badge: unreadMessages },
         { key: 'profile', title: 'Profile', icon: 'person' }
       )
     } else if (user.userType === 'runner') {
       userRoutes.push(
         { key: 'home', title: 'Home', icon: 'home' },
         { key: 'earnings', title: 'Earnings', icon: 'wallet' },
-        { 
-          key: 'activity', 
-          title: 'Activity', 
-          icon: 'time',
-          isCenter: true // Mark this as center tab
-        },
-        { 
-          key: 'messages', 
-          title: 'Messages', 
-          icon: 'chatbubbles', 
-          badge: unreadMessages 
-        },
+        { key: 'activity', title: 'Activity', icon: 'time' },
+        { key: 'messages', title: 'Messages', icon: 'chatbubbles', badge: unreadMessages },
         { key: 'profile', title: 'Profile', icon: 'person' }
       )
     }
     setRoutes(userRoutes)
-    
-    // Initialize animations for each tab
-    tabAnimations.length = 0
-    userRoutes.forEach((_, i) => {
-      tabAnimations[i] = new Animated.Value(i === index ? 1 : 0)
-    })
 
     const checkUnreadMessages = async () => {
       try {
@@ -143,35 +114,6 @@ const MainTabNavigator = () => {
     return () => clearInterval(interval)
   }, [user, unreadMessages])
 
-  // Handle tab change with animation
-  const handleTabChange = (newIndex: number) => {
-    // Reset all animations
-    tabAnimations.forEach((anim, i) => {
-      Animated.timing(anim, {
-        toValue: 0,
-        duration: 100,
-        useNativeDriver: true,
-      }).start()
-    })
-    
-    // Animate the selected tab
-    Animated.sequence([
-      Animated.timing(tabAnimations[newIndex], {
-        toValue: 1.3, // Scale up
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.spring(tabAnimations[newIndex], {
-        toValue: 1,
-        friction: 5,
-        tension: 40,
-        useNativeDriver: true,
-      })
-    ]).start()
-    
-    setIndex(newIndex)
-  }
-
   // Create scene map based on user type
   const renderScene = SceneMap({
     // Buyer scenes
@@ -199,63 +141,31 @@ const MainTabNavigator = () => {
           { 
             backgroundColor: theme.card,
             borderTopColor: theme.border,
-            borderRadius: 30,
-            marginHorizontal: 16,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 8,
           }
         ]}>
           {props.navigationState.routes.map((route: TabRoute, i: number) => {
             const isActive = i === props.navigationState.index
             const iconName = isActive ? route.icon : `${route.icon}-outline`
             
-            // Animation values
-            const scale = tabAnimations[i].interpolate({
-              inputRange: [0, 1],
-              outputRange: [1, 1.2]
-            })
-            
             return (
               <TouchableOpacity
                 key={route.key}
-                style={[
-                  styles.tabItem,
-                  route.isCenter && styles.centerTabItem,
-                  route.isCenter && { 
-                    backgroundColor: isActive 
-                      ? theme.primary
-                      : theme.primary + '80',
-                    transform: [{ translateY: -20 }],
-                    shadowColor: theme.primary,
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 8,
-                  }
-                ]}
-                onPress={() => handleTabChange(i)}
-                activeOpacity={0.7}
+                style={styles.tabItem}
+                onPress={() => props.jumpTo(route.key)}
               >
-                <Animated.View style={[
-                  styles.iconContainer,
-                  route.isCenter && styles.centerIconContainer,
-                  { transform: [{ scale }] }
-                ]}>
+                <View style={styles.iconContainer}>
                   <Ionicons
                     name={iconName as any}
-                    size={route.isCenter ? 28 : 24}
-                    color={isActive || route.isCenter ? (route.isCenter ? 'white' : theme.primary) : theme.text + "80"}
+                    size={24}
+                    color={isActive ? theme.primary : theme.text + "80"}
                   />
                   {route.badge && route.badge > 0 && (
                     <View style={[
                       styles.badge, 
                       { 
                         backgroundColor: theme.accent,
-                        right: route.isCenter ? -10 : -8,
-                        top: route.isCenter ? -10 : -4
+                        right: -8,
+                        top: -4
                       }
                     ]}>
                       <Text style={styles.badgeText}>
@@ -263,20 +173,17 @@ const MainTabNavigator = () => {
                       </Text>
                     </View>
                   )}
-                </Animated.View>
-                {!route.isCenter && (
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      {
-                        color: isActive ? theme.primary : theme.text + "80",
-                        opacity: isActive ? 1 : 0.7,
-                      },
-                    ]}
-                  >
-                    {route.title}
-                  </Text>
-                )}
+                </View>
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    {
+                      color: isActive ? theme.primary : theme.text + "80",
+                    },
+                  ]}
+                >
+                  {route.title}
+                </Text>
               </TouchableOpacity>
             )
           })}
@@ -290,15 +197,14 @@ const MainTabNavigator = () => {
       <TabView
         navigationState={{ index, routes }}
         renderScene={renderScene}
-        onIndexChange={handleTabChange}
+        onIndexChange={setIndex}
         initialLayout={{ width: layout.width }}
-        renderTabBar={() => renderTabBar({ navigationState: { index, routes }, setIndex: handleTabChange })}
+        renderTabBar={renderTabBar}
         swipeEnabled={true}
         animationEnabled={true}
         lazy={true}
         lazyPreloadDistance={1}
         tabBarPosition="bottom"
-        style={{ marginBottom: 10 }}
       />
     </View>
   )
@@ -307,7 +213,7 @@ const MainTabNavigator = () => {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 0,
     left: 0,
     right: 0,
     paddingBottom: 10,
@@ -315,10 +221,11 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     height: 70,
+    borderTopWidth: 1,
+    elevation: 10,
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 10,
-    paddingBottom: 10,
   },
   tabItem: {
     flex: 1,
@@ -327,27 +234,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     height: '100%',
   },
-  centerTabItem: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  centerIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   iconContainer: {
     position: 'relative',
   },
   tabLabel: {
     fontSize: 12,
     marginTop: 4,
-    fontWeight: '500',
   },
   badge: {
     position: 'absolute',

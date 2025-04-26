@@ -18,8 +18,11 @@ import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { searchService, User } from "../services/search";
+import { searchService, User, Product } from "../services/search";
 import { formatDistance } from "../utils/location";
+
+type SearchResult = User | Product;
+type SearchCategory = 'runner' | 'seller' | 'product';
 
 const SearchScreen = () => {
   const { user } = useAuth();
@@ -30,8 +33,8 @@ const SearchScreen = () => {
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<User[]>([]);
-  const [selectedUserType, setSelectedUserType] = useState<'runner' | 'seller'>('runner');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<SearchCategory>('runner');
 
   useEffect(() => {
     getLocation();
@@ -64,29 +67,34 @@ const SearchScreen = () => {
 
     try {
       setIsSearching(true);
+      let results: SearchResult[] = [];
 
-      const results = await searchService.searchUsers(
-        {
-          userType: selectedUserType,
-        },
-        userLocation || undefined
-      );
-
-      // Filter by search query if provided
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        setSearchResults(
-          results.filter(
-            (user) =>
-              user.name.toLowerCase().includes(query) ||
-              (user.email && user.email.toLowerCase().includes(query))
-          )
+      if (selectedCategory === 'product') {
+        // Mock product search - replace with actual API call
+        results = await searchService.searchProducts(
+          searchQuery,
+          userLocation || undefined
         );
       } else {
-        setSearchResults(results);
+        const users = await searchService.searchUsers(
+          { userType: selectedCategory },
+          userLocation || undefined
+        );
+        results = users;
       }
+
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        results = results.filter(item => {
+          if ('name' in item) return item.name.toLowerCase().includes(query);
+          if ('title' in item) return item.title.toLowerCase().includes(query);
+          return false;
+        });
+      }
+
+      setSearchResults(results);
     } catch (error) {
-      console.error("Error searching users:", error);
+      console.error("Error searching:", error);
     } finally {
       setIsSearching(false);
     }
@@ -96,85 +104,120 @@ const SearchScreen = () => {
     navigation.navigate("UserProfile", { userId: user.id });
   };
 
-  const renderUserItem = ({ item }: {item: User}) => (
-    <TouchableOpacity
-      style={[styles.userItem, { backgroundColor: theme.card, borderColor: theme.border }]}
-      onPress={() => handleUserPress(item)}
-    >
-      {item.photoURL ? (
-        <Image source={{ uri: item.photoURL }} style={styles.userImage} />
-      ) : (
-        <View style={[styles.userImage, { backgroundColor: theme.primary }]}>
-          <Ionicons name="person" size={24} color="#fff" />
+  const handleProductPress = (product: Product) => {
+    navigation.navigate("ProductDetail", { productId: product.id });
+  };
+
+  const renderItem = ({ item }: { item: SearchResult }) => {
+    if ('userType' in item) {
+      return (
+        <TouchableOpacity
+          style={[styles.userItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => handleUserPress(item)}
+        >
+          {item.photoURL ? (
+            <Image source={{ uri: item.photoURL }} style={styles.userImage} />
+          ) : (
+            <View style={[styles.userImage, { backgroundColor: theme.primary }]}>
+              <Ionicons name="person" size={24} color="#fff" />
+            </View>
+          )}
+          
+          <View style={styles.userInfo}>
+            <Text style={[styles.userName, { color: theme.text }]}>{item.name}</Text>
+            <Text style={[styles.userType, { color: theme.primary }]}>
+              {item.userType === 'runner' ? 'Errand Runner' : 'Seller'}
+            </Text>
+            
+            {item.distance !== undefined && (
+              <View style={styles.distanceContainer}>
+                <Ionicons name="location" size={14} color={theme.text + "80"} />
+                <Text style={[styles.distanceText, { color: theme.text + "80" }]}>
+                  {formatDistance(item.distance)} away
+                </Text>
+              </View>
+            )}
+            
+            {item.rating && (
+              <View style={styles.ratingContainer}>
+                <Ionicons name="star" size={14} color="#FFD700" />
+                <Text style={[styles.ratingText, { color: theme.text + "80" }]}>
+                  {item.rating.toFixed(1)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        style={[styles.productItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+        onPress={() => handleProductPress(item)}
+      >
+        <Image source={{ uri: item.image }} style={styles.productImage} />
+        <View style={styles.productInfo}>
+          <Text style={[styles.productTitle, { color: theme.text }]}>{item.title}</Text>
+          <Text style={[styles.productPrice, { color: theme.primary }]}>
+            ${item.price.toFixed(2)}
+          </Text>
+          <View style={styles.productSeller}>
+            <Ionicons name="person-circle" size={14} color={theme.text + "80"} />
+            <Text style={[styles.sellerName, { color: theme.text + "80" }]}>
+              {item.sellerName}
+            </Text>
+          </View>
+          {item.distance !== undefined && (
+            <View style={styles.distanceContainer}>
+              <Ionicons name="location" size={14} color={theme.text + "80"} />
+              <Text style={[styles.distanceText, { color: theme.text + "80" }]}>
+                {formatDistance(item.distance)} away
+              </Text>
+            </View>
+          )}
         </View>
-      )}
-      
-      <View style={styles.userInfo}>
-        <Text style={[styles.userName, { color: theme.text }]}>{item.name}</Text>
-        <Text style={[styles.userType, { color: theme.primary }]}>
-          {item.userType === 'runner' ? 'Errand Runner' : 'Seller'}
-        </Text>
-        
-        {item.distance !== undefined && (
-          <View style={styles.distanceContainer}>
-            <Ionicons name="location" size={14} color={theme.text + "80"} />
-            <Text style={[styles.distanceText, { color: theme.text + "80" }]}>
-              {formatDistance(item.distance)} away
-            </Text>
-          </View>
-        )}
-        
-        {item.rating && (
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={14} color="#FFD700" />
-            <Text style={[styles.ratingText, { color: theme.text + "80" }]}>
-              {item.rating.toFixed(1)}
-            </Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top"]}>
       <StatusBar style={isDark ? "light" : "dark"} />
 
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Text style={[styles.title, { color: theme.text }]}>Find {selectedUserType === 'runner' ? 'Runners' : 'Sellers'}</Text>
+        <Text style={[styles.title, { color: theme.text }]}>
+          {selectedCategory === 'runner' && 'Find Runners'}
+          {selectedCategory === 'seller' && 'Find Sellers'}
+          {selectedCategory === 'product' && 'Browse Products'}
+        </Text>
       </View>
 
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            selectedUserType === 'runner' && styles.activeToggleButton,
-            { backgroundColor: selectedUserType === 'runner' ? theme.primary : theme.card }
-          ]}
-          onPress={() => setSelectedUserType('runner')}
-        >
-          <Text style={[
-            styles.toggleButtonText,
-            { color: selectedUserType === 'runner' ? '#fff' : theme.text }
-          ]}>
-            Runners
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            selectedUserType === 'seller' && styles.activeToggleButton,
-            { backgroundColor: selectedUserType === 'seller' ? theme.primary : theme.card }
-          ]}
-          onPress={() => setSelectedUserType('seller')}
-        >
-          <Text style={[
-            styles.toggleButtonText,
-            { color: selectedUserType === 'seller' ? '#fff' : theme.text }
-          ]}>
-            Sellers
-          </Text>
-        </TouchableOpacity>
+      <View style={[styles.toggleContainer, { borderColor: theme.border }]}>
+        {(['runner', 'seller', 'product'] as SearchCategory[]).map((category) => (
+          <TouchableOpacity
+            key={category}
+            style={[
+              styles.toggleButton,
+              selectedCategory === category && styles.activeToggleButton,
+              { 
+                backgroundColor: selectedCategory === category ? theme.primary : theme.card,
+                borderColor: selectedCategory === category ? theme.primary : theme.border
+              }
+            ]}
+            onPress={() => setSelectedCategory(category)}
+          >
+            <Text style={[
+              styles.toggleButtonText,
+              { 
+                color: selectedCategory === category ? '#fff' : theme.text,
+                fontWeight: selectedCategory === category ? '600' : '500'
+              }
+            ]}>
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <View style={styles.searchContainer}>
@@ -182,7 +225,11 @@ const SearchScreen = () => {
           <Ionicons name="search" size={20} color={theme.text + "50"} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: theme.text }]}
-            placeholder={`Search ${selectedUserType === 'runner' ? 'runners' : 'sellers'}...`}
+            placeholder={
+              selectedCategory === 'runner' ? 'Search runners...' :
+              selectedCategory === 'seller' ? 'Search sellers...' :
+              'Search products...'
+            }
             placeholderTextColor={theme.text + "50"}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -211,17 +258,17 @@ const SearchScreen = () => {
       ) : (
         <FlatList
           data={searchResults}
-          renderItem={renderUserItem}
+          renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.resultsList}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="search" size={60} color={theme.text + "30"} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                No {selectedUserType === 'runner' ? 'runners' : 'sellers'} found
+                {selectedCategory === 'product' ? 'No products found' : `No ${selectedCategory}s found`}
               </Text>
               <Text style={[styles.emptyText, { color: theme.text + "80" }]}>
-                Try adjusting your search
+                Try adjusting your search terms or location
               </Text>
             </View>
           }
@@ -251,16 +298,19 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderRadius: 8,
     overflow: 'hidden',
+    borderWidth: 1,
   },
   toggleButton: {
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
+    borderWidth: 1,
   },
-  activeToggleButton: {},
+  activeToggleButton: {
+    borderColor: '#fff',
+  },
   toggleButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
   },
   searchContainer: {
     flexDirection: "row",
@@ -351,6 +401,42 @@ const styles = StyleSheet.create({
   userType: {
     fontSize: 14,
     marginBottom: 5,
+  },
+  productItem: {
+    flexDirection: 'row',
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  productImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 15,
+  },
+  productInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  productTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  productPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  productSeller: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sellerName: {
+    fontSize: 12,
+    marginLeft: 5,
   },
   distanceContainer: {
     flexDirection: 'row',
