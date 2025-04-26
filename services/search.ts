@@ -16,6 +16,20 @@ export interface User {
   distance?: number;
 }
 
+export interface Product {
+  id: string;
+  title: string;
+  price: number;
+  image: string;
+  sellerId: string;
+  sellerName: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
+  distance?: number;
+}
+
 export interface SearchFilters {
   userType?: 'runner' | 'seller';
   maxDistance?: number;
@@ -31,9 +45,7 @@ export const searchService = {
       const usersRef = ref(database, "users");
       const snapshot = await get(usersRef);
 
-      if (!snapshot.exists()) {
-        return [];
-      }
+      if (!snapshot.exists()) return [];
 
       let users: User[] = [];
       snapshot.forEach((childSnapshot) => {
@@ -44,41 +56,30 @@ export const searchService = {
         } as User);
       });
 
-      // Apply filters
-      if (filters) {
-        // Filter by user type
-        if (filters.userType) {
-          users = users.filter((user) => user.userType === filters.userType);
+      if (filters?.userType) {
+        users = users.filter(user => user.userType === filters.userType);
+      }
+
+      if (filters?.minRating) {
+        users = users.filter(user => (user.rating || 0) >= filters.minRating!);
+      }
+
+      if (userLocation) {
+        users = users.map(user => ({
+          ...user,
+          distance: user.location ? calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            user.location.latitude,
+            user.location.longitude
+          ) : Infinity
+        }));
+
+        if (filters?.maxDistance) {
+          users = users.filter(user => (user.distance || Infinity) <= filters.maxDistance!);
         }
 
-        // Filter by rating
-        if (filters.minRating) {
-          users = users.filter((user) => (user.rating || 0) >= filters.minRating!);
-        }
-
-        // Calculate and filter by distance
-        if (userLocation) {
-          users = users.map((user) => {
-            if (user.location) {
-              user.distance = calculateDistance(
-                userLocation.latitude,
-                userLocation.longitude,
-                user.location.latitude,
-                user.location.longitude
-              );
-            } else {
-              user.distance = Infinity;
-            }
-            return user;
-          });
-
-          if (filters.maxDistance) {
-            users = users.filter((user) => (user.distance ?? Infinity) <= filters.maxDistance!);
-          }
-
-          // Sort by distance (nearest first)
-          users.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-        }
+        users.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
       }
 
       return users;
@@ -87,6 +88,44 @@ export const searchService = {
       throw error;
     }
   },
-};
 
-export default searchService;
+  async searchProducts(
+    query: string,
+    userLocation?: { latitude: number; longitude: number }
+  ): Promise<Product[]> {
+    try {
+      const productsRef = ref(database, "products");
+      const snapshot = await get(productsRef);
+
+      if (!snapshot.exists()) return [];
+
+      let products: Product[] = [];
+      snapshot.forEach((childSnapshot) => {
+        const productData = childSnapshot.val();
+        products.push({
+          id: childSnapshot.key,
+          ...productData,
+        } as Product);
+      });
+
+      if (userLocation) {
+        products = products.map(product => ({
+          ...product,
+          distance: product.location ? calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            product.location.latitude,
+            product.location.longitude
+          ) : Infinity
+        }));
+
+        products.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+      }
+
+      return products;
+    } catch (error) {
+      console.error("Error searching products:", error);
+      throw error;
+    }
+  },
+};

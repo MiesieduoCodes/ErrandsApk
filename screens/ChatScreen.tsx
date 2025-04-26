@@ -22,7 +22,8 @@ import {
 import { StatusBar } from "expo-status-bar"
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { useNavigation, useRoute } from "@react-navigation/native"
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { chatService, type Message } from "../services/chat"
@@ -32,14 +33,23 @@ import * as Haptics from 'expo-haptics'
 import { Audio } from 'expo-av'
 import { BlurView } from 'expo-blur'
 
+type RootStackParamList = {
+  ChatScreen: { chatId: string };
+  ProfileScreen: { userId: string };
+  // Add other screens here as needed
+};
+
+type ChatScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ChatScreen'>;
+type ChatScreenRouteProp = RouteProp<RootStackParamList, 'ChatScreen'>;
+
 const { width, height } = Dimensions.get('window')
 
 const ChatScreen = () => {
   const { user } = useAuth()
   const { theme, isDark } = useTheme()
-  const navigation = useNavigation()
-  const route = useRoute()
-  const { chatId } = route.params as { chatId: string }
+  const navigation = useNavigation<ChatScreenNavigationProp>()
+  const route = useRoute<ChatScreenRouteProp>()
+  const { chatId } = route.params
 
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState("")
@@ -116,7 +126,6 @@ const ChatScreen = () => {
     loadChatData()
     loadMessages()
 
-    // Mark messages as read when opening the chat
     if (user) {
       chatService.markMessagesAsRead(chatId, user.id)
     }
@@ -228,24 +237,21 @@ const ChatScreen = () => {
     if (!user) return
 
     try {
-      // Get chat data
       const chatsRef = await chatService.getUserChats(user.id)
       const chat = chatsRef.find((c) => c.id === chatId)
 
       if (chat) {
         setChatData(chat)
 
-        // Get other user data
         const otherParticipantId = chat.participants.find((id) => id !== user.id)
         if (otherParticipantId) {
           const userData = await userService.getUserByFirebaseUid(otherParticipantId)
           setOtherUser({
             ...userData,
-            isOnline: Math.random() > 0.5, // Simulated online status
-            lastSeen: new Date(Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000)).toISOString(), // Random last seen
+            isOnline: Math.random() > 0.5,
+            lastSeen: new Date(Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000)).toISOString(),
           })
 
-          // Set navigation title
           navigation.setOptions({
             title: userData ? userData.name || userData.email : "Chat",
             headerTitleStyle: {
@@ -280,23 +286,17 @@ const ChatScreen = () => {
       setIsSending(true)
       const newMessage = await chatService.sendMessage(chatId, user.id, messageText.trim())
 
-      // Update local state with animation
       setMessages((prevMessages) => [...prevMessages, newMessage])
       setMessageText("")
 
-      // Play sound and haptic feedback for sent message
       playNotificationSound()
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       animateSendButton()
 
-      // Scroll to bottom with animation
       setTimeout(() => {
-        if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({ animated: true })
-        }
+        flatListRef.current?.scrollToEnd({ animated: true })
       }, 100)
       
-      // Show typing indicator briefly
       setTyping(true)
       setTimeout(() => setTyping(false), 1500)
       
@@ -332,19 +332,12 @@ const ChatScreen = () => {
     const yOffset = event.nativeEvent.contentOffset.y
     scrollY.setValue(yOffset)
     
-    // Show scroll button when scrolled up
-    if (yOffset > 300) {
-      setShowScrollButton(true)
-    } else {
-      setShowScrollButton(false)
-    }
+    setShowScrollButton(yOffset > 300)
   }
 
   const scrollToBottom = () => {
-    if (flatListRef.current) {
-      flatListRef.current.scrollToEnd({ animated: true })
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    }
+    flatListRef.current?.scrollToEnd({ animated: true })
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
   }
 
   const toggleAttachmentOptions = () => {
@@ -358,7 +351,6 @@ const ChatScreen = () => {
   }
 
   const addReaction = (messageId: string, reaction: string) => {
-    // In a real app, you would update the message with the reaction
     console.log(`Added reaction ${reaction} to message ${messageId}`)
     setShowReactions(null)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -382,7 +374,6 @@ const ChatScreen = () => {
       })
     }
 
-    // Check if message contains an image URL (simplified detection)
     const hasImage = item.text.includes('http') && 
                     (item.text.includes('.jpg') || 
                      item.text.includes('.png') || 
@@ -402,7 +393,11 @@ const ChatScreen = () => {
         {!isMyMessage && isLastInGroup && (
           <TouchableOpacity 
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('ProfileScreen', { userId: item.senderId })}
+            onPress={() => {
+              if (item.senderId) {
+                navigation.navigate('ProfileScreen', { userId: item.senderId })
+              }
+            }}
           >
             <Image
               source={otherUser?.photoURL ? { uri: otherUser.photoURL } : require("../assets/profile-avatar.png")}
@@ -423,7 +418,7 @@ const ChatScreen = () => {
         
         <TouchableOpacity
           activeOpacity={0.8}
-          onLongPress={() => showReactionOptions(item.id)}
+          onLongPress={() => item.id && showReactionOptions(item.id)}
           delayLongPress={200}
           style={styles.messageBubbleContainer}
         >
@@ -473,14 +468,13 @@ const ChatScreen = () => {
             </View>
           </View>
           
-          {/* Reaction button */}
           {!showReactions && (
             <TouchableOpacity 
               style={[
                 styles.reactionButton,
                 isMyMessage ? styles.myReactionButton : styles.otherReactionButton
               ]}
-              onPress={() => showReactionOptions(item.id)}
+              onPress={() => item.id && showReactionOptions(item.id)}
             >
               <MaterialCommunityIcons 
                 name="emoticon-outline" 
@@ -490,7 +484,6 @@ const ChatScreen = () => {
             </TouchableOpacity>
           )}
           
-          {/* Reaction options */}
           {showReactions === item.id && (
             <Animated.View 
               style={[
@@ -512,7 +505,7 @@ const ChatScreen = () => {
                 <TouchableOpacity
                   key={reaction}
                   style={styles.reactionOption}
-                  onPress={() => addReaction(item.id, reaction)}
+                  onPress={() => item.id && addReaction(item.id, reaction)}
                 >
                   <Text style={styles.reactionEmoji}>{reaction}</Text>
                 </TouchableOpacity>
@@ -581,7 +574,6 @@ const ChatScreen = () => {
             style={styles.attachmentOption}
             onPress={() => {
               toggleAttachmentOptions()
-              // Handle attachment option
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
             }}
           >
@@ -599,7 +591,6 @@ const ChatScreen = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top"]}>
       <StatusBar style={isDark ? "light" : "dark"} />
 
-      {/* Custom Header */}
       <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
         <TouchableOpacity 
           style={styles.backButton} 
@@ -611,8 +602,11 @@ const ChatScreen = () => {
 
         <TouchableOpacity 
           style={styles.headerInfo}
-          onPress={() => navigation.navigate('ProfileScreen', { userId: otherUser?.id })}
-          onPress={() => navigation.navigate('ProfileScreen', { userId: otherUser?.id })}
+          onPress={() => {
+            if (otherUser?.id) {
+              navigation.navigate('ProfileScreen', { userId: otherUser.id })
+            }
+          }}
         >
           {otherUser ? (
             <>
@@ -653,19 +647,13 @@ const ChatScreen = () => {
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.headerButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              // Handle voice call
-            }}
+            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
           >
             <Ionicons name="call-outline" size={22} color={theme.text} />
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.headerButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              // Handle video call
-            }}
+            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
           >
             <Ionicons name="videocam-outline" size={22} color={theme.text} />
           </TouchableOpacity>
@@ -713,7 +701,6 @@ const ChatScreen = () => {
               }
             />
             
-            {/* Scroll to bottom button */}
             {showScrollButton && (
               <TouchableOpacity 
                 style={[styles.scrollButton, { backgroundColor: theme.card }]}
@@ -726,10 +713,8 @@ const ChatScreen = () => {
           </>
         )}
 
-        {/* Attachment options */}
         {showAttachmentOptions && renderAttachmentOptions()}
 
-        {/* Input area */}
         <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <TouchableOpacity 
             style={styles.attachButton}
@@ -783,7 +768,6 @@ const ChatScreen = () => {
         </View>
       </KeyboardAvoidingView>
       
-      {/* Image preview modal */}
       {showImagePreview && (
         <Pressable 
           style={styles.imagePreviewContainer}

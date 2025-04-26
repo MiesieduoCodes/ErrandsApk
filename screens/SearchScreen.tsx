@@ -18,7 +18,8 @@ import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { searchService, User, Product } from "../services/search";
+import { searchService, User } from "../services/search";
+import type { Product } from "../services/search";
 import { formatDistance } from "../utils/location";
 
 type SearchResult = (User & { type: 'user' }) | (Product & { type: 'product' });
@@ -44,11 +45,7 @@ const SearchScreen = () => {
     try {
       setIsLoading(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== "granted") {
-        console.log("Permission to access location was denied");
-        return;
-      }
+      if (status !== "granted") return;
 
       const location = await Location.getCurrentPositionAsync({});
       setUserLocation({
@@ -102,16 +99,12 @@ const SearchScreen = () => {
 
   const handleUserPress = (user: User) => {
     if (!user.id) return;
-    navigation.navigate("UserProfile", { 
-      userId: user.id 
-    });
+    navigation.navigate("UserProfile", { userId: user.id });
   };
 
   const handleProductPress = (product: Product) => {
     if (!product.id) return;
-    navigation.navigate("ProductDetail", { 
-      productId: product.id 
-    });
+    navigation.navigate("ProductDetail", { productId: product.id });
   };
 
   const isUser = (item: SearchResult): item is User & { type: 'user' } => item.type === 'user';
