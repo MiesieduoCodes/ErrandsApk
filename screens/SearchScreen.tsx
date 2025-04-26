@@ -18,11 +18,10 @@ import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { searchService, User } from "../services/search";
-import Product from "../services/search";
+import { searchService, User, Product } from "../services/search";
 import { formatDistance } from "../utils/location";
 
-type SearchResult = User | Product;
+type SearchResult = (User & { type: 'user' }) | (Product & { type: 'product' });
 type SearchCategory = 'runner' | 'seller' | 'product';
 
 const SearchScreen = () => {
@@ -71,24 +70,24 @@ const SearchScreen = () => {
       let results: SearchResult[] = [];
 
       if (selectedCategory === 'product') {
-        // Mock product search - replace with actual API call
-        results = await searchService.searchProducts(
+        const products = await searchService.searchProducts(
           searchQuery,
           userLocation || undefined
         );
+        results = products.map(p => ({ ...p, type: 'product' }));
       } else {
         const users = await searchService.searchUsers(
           { userType: selectedCategory },
           userLocation || undefined
         );
-        results = users;
+        results = users.map(u => ({ ...u, type: 'user' }));
       }
 
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         results = results.filter(item => {
-          if ('name' in item) return item.name.toLowerCase().includes(query);
-          if ('title' in item) return item.title.toLowerCase().includes(query);
+          if (item.type === 'user') return item.name.toLowerCase().includes(query);
+          if (item.type === 'product') return item.title.toLowerCase().includes(query);
           return false;
         });
       }
@@ -102,15 +101,24 @@ const SearchScreen = () => {
   };
 
   const handleUserPress = (user: User) => {
-    navigation.navigate("UserProfile", { userId: user.id });
+    if (!user.id) return;
+    navigation.navigate("UserProfile", { 
+      userId: user.id 
+    });
   };
 
   const handleProductPress = (product: Product) => {
-    navigation.navigate("ProductDetail", { productId: product.id });
+    if (!product.id) return;
+    navigation.navigate("ProductDetail", { 
+      productId: product.id 
+    });
   };
 
+  const isUser = (item: SearchResult): item is User & { type: 'user' } => item.type === 'user';
+  const isProduct = (item: SearchResult): item is Product & { type: 'product' } => item.type === 'product';
+
   const renderItem = ({ item }: { item: SearchResult }) => {
-    if ('userType' in item) {
+    if (isUser(item)) {
       return (
         <TouchableOpacity
           style={[styles.userItem, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -152,34 +160,38 @@ const SearchScreen = () => {
       );
     }
 
-    return (
-      <TouchableOpacity
-        style={[styles.productItem, { backgroundColor: theme.card, borderColor: theme.border }]}
-        onPress={() => handleProductPress(item)}
-      >
-        <Image source={{ uri: item.image }} style={styles.productImage} />
-        <View style={styles.productInfo}>
-          <Text style={[styles.productTitle, { color: theme.text }]}>{item.title}</Text>
-          <Text style={[styles.productPrice, { color: theme.primary }]}>
-            ${item.price.toFixed(2)}
-          </Text>
-          <View style={styles.productSeller}>
-            <Ionicons name="person-circle" size={14} color={theme.text + "80"} />
-            <Text style={[styles.sellerName, { color: theme.text + "80" }]}>
-              {item.sellerName}
+    if (isProduct(item)) {
+      return (
+        <TouchableOpacity
+          style={[styles.productItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => handleProductPress(item)}
+        >
+          <Image source={{ uri: item.image }} style={styles.productImage} />
+          <View style={styles.productInfo}>
+            <Text style={[styles.productTitle, { color: theme.text }]}>{item.title}</Text>
+            <Text style={[styles.productPrice, { color: theme.primary }]}>
+              ${item.price.toFixed(2)}
             </Text>
-          </View>
-          {item.distance !== undefined && (
-            <View style={styles.distanceContainer}>
-              <Ionicons name="location" size={14} color={theme.text + "80"} />
-              <Text style={[styles.distanceText, { color: theme.text + "80" }]}>
-                {formatDistance(item.distance)} away
+            <View style={styles.productSeller}>
+              <Ionicons name="person-circle" size={14} color={theme.text + "80"} />
+              <Text style={[styles.sellerName, { color: theme.text + "80" }]}>
+                {item.sellerName}
               </Text>
             </View>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
+            {item.distance !== undefined && (
+              <View style={styles.distanceContainer}>
+                <Ionicons name="location" size={14} color={theme.text + "80"} />
+                <Text style={[styles.distanceText, { color: theme.text + "80" }]}>
+                  {formatDistance(item.distance)} away
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -238,7 +250,13 @@ const SearchScreen = () => {
             onSubmitEditing={handleSearch}
           />
           {searchQuery ? (
-            <TouchableOpacity style={styles.clearButton} onPress={() => setSearchQuery("")}>
+            <TouchableOpacity 
+              style={styles.clearButton} 
+              onPress={() => {
+                setSearchQuery("");
+                setSearchResults([]);
+              }}
+            >
               <Ionicons name="close-circle" size={20} color={theme.text + "50"} />
             </TouchableOpacity>
           ) : null}
@@ -278,7 +296,6 @@ const SearchScreen = () => {
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
