@@ -57,6 +57,7 @@
     "expo": "latest",
     "expo-auth-session": "latest",
     "expo-av": "^15.0.2",
+    "expo-blur": "~14.0.3",
     "expo-constants": "latest",
     "expo-dev-client": "~5.0.20",
     "expo-device": "latest",

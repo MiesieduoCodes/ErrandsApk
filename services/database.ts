@@ -654,6 +654,7 @@ export const sellerService = {
         price: number
         category: string
         imageUrl?: string
+        imageUrls?: string[]
         inStock: boolean
         quantity?: number
         [key: string]: any
@@ -682,6 +683,7 @@ export const sellerService = {
       price: number
       category: string
       imageUrl?: string
+      imageUrls?: string[]
       inStock: boolean
       quantity?: number
     },
@@ -718,6 +720,7 @@ export const sellerService = {
       price?: number
       category?: string
       imageUrl?: string
+      imageUrls?: string[]
       inStock?: boolean
       quantity?: number
     },

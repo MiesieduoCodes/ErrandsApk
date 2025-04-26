@@ -18,7 +18,8 @@ import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { searchService, User, Product } from "../services/search";
+import { searchService, User } from "../services/search";
+import Product from "../services/search";
 import { formatDistance } from "../utils/location";
 
 type SearchResult = User | Product;

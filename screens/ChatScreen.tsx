@@ -14,9 +14,13 @@ import {
   Image,
   Animated,
   Easing,
+  Pressable,
+  Dimensions,
+  StatusBar as RNStatusBar,
+  Vibration,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
-import { Ionicons } from "@expo/vector-icons"
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
@@ -24,8 +28,11 @@ import { useTheme } from "../context/ThemeContext"
 import { chatService, type Message } from "../services/chat"
 import { userService } from "../services/database"
 import { type Chat } from "../services/chat"
-import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics'
+import { Audio } from 'expo-av'
+import { BlurView } from 'expo-blur'
+
+const { width, height } = Dimensions.get('window')
 
 const ChatScreen = () => {
   const { user } = useAuth()
@@ -39,42 +46,70 @@ const ChatScreen = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [chatData, setChatData] = useState<Chat | null>(null)
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [typing, setTyping] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null)
+  const [typing, setTyping] = useState(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  const [showAttachmentOptions, setShowAttachmentOptions] = useState(false)
+  const [showReactions, setShowReactions] = useState<string | null>(null)
+  const [showImagePreview, setShowImagePreview] = useState<string | null>(null)
   
   interface OtherUser {
+    id: string
     name?: string
     email?: string
     photoURL?: string
     userType: string
+    isOnline?: boolean
+    lastSeen?: string
   }
   
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null)
   const flatListRef = useRef<FlatList<Message>>(null)
   const lastMessageCount = useRef(0)
   const inputRef = useRef<TextInput>(null)
+  const scrollY = useRef(new Animated.Value(0)).current
 
   // Animation values
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.8)).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const attachmentAnim = useRef(new Animated.Value(0)).current
+  const reactionAnim = useRef(new Animated.Value(0)).current
+
+  // Header animation
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 60],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  })
+
+  const headerTranslate = scrollY.interpolate({
+    inputRange: [0, 60],
+    outputRange: [10, 0],
+    extrapolate: 'clamp',
+  })
 
   // Load sound effect
   useEffect(() => {
     async function loadSound() {
-      const { sound } = await Audio.Sound.createAsync(
-        require('../assets/message.mp3')
-      );
-      setSound(sound);
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/message.mp3')
+        )
+        setSound(sound)
+      } catch (error) {
+        console.error("Error loading sound:", error)
+      }
     }
 
-    loadSound();
+    loadSound()
 
     return () => {
       if (sound) {
-        sound.unloadAsync();
+        sound.unloadAsync()
       }
-    };
-  }, []);
+    }
+  }, [])
 
   // Auto-reload messages every 5 seconds
   useEffect(() => {
@@ -87,21 +122,57 @@ const ChatScreen = () => {
     }
 
     const interval = setInterval(() => {
-      reloadMessages();
-    }, 5000);
+      reloadMessages()
+    }, 5000)
 
-    return () => clearInterval(interval);
+    return () => clearInterval(interval)
   }, [chatId, user])
 
   // Play sound when new messages arrive
   useEffect(() => {
     if (messages.length > lastMessageCount.current && sound) {
-      playNotificationSound();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      animateNewMessage();
+      playNotificationSound()
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      animateNewMessage()
     }
-    lastMessageCount.current = messages.length;
-  }, [messages.length]);
+    lastMessageCount.current = messages.length
+  }, [messages.length])
+
+  // Animate attachment options
+  useEffect(() => {
+    if (showAttachmentOptions) {
+      Animated.spring(attachmentAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 7,
+        tension: 40,
+      }).start()
+    } else {
+      Animated.timing(attachmentAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start()
+    }
+  }, [showAttachmentOptions])
+
+  // Animate reaction options
+  useEffect(() => {
+    if (showReactions) {
+      Animated.spring(reactionAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 7,
+        tension: 40,
+      }).start()
+    } else {
+      Animated.timing(reactionAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start()
+    }
+  }, [showReactions])
 
   const animateNewMessage = () => {
     Animated.sequence([
@@ -116,8 +187,8 @@ const ChatScreen = () => {
         friction: 5,
         useNativeDriver: true,
       })
-    ]).start();
-  };
+    ]).start()
+  }
 
   const animateSendButton = () => {
     Animated.sequence([
@@ -131,18 +202,18 @@ const ChatScreen = () => {
         friction: 3,
         useNativeDriver: true,
       })
-    ]).start();
-  };
+    ]).start()
+  }
 
   const playNotificationSound = async () => {
     try {
       if (sound) {
-        await sound.replayAsync();
+        await sound.replayAsync()
       }
     } catch (error) {
-      console.error('Error playing sound:', error);
+      console.error('Error playing sound:', error)
     }
-  };
+  }
 
   const reloadMessages = async () => {
     try {
@@ -168,7 +239,11 @@ const ChatScreen = () => {
         const otherParticipantId = chat.participants.find((id) => id !== user.id)
         if (otherParticipantId) {
           const userData = await userService.getUserByFirebaseUid(otherParticipantId)
-          setOtherUser(userData)
+          setOtherUser({
+            ...userData,
+            isOnline: Math.random() > 0.5, // Simulated online status
+            lastSeen: new Date(Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000)).toISOString(), // Random last seen
+          })
 
           // Set navigation title
           navigation.setOptions({
@@ -210,20 +285,20 @@ const ChatScreen = () => {
       setMessageText("")
 
       // Play sound and haptic feedback for sent message
-      playNotificationSound();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      animateSendButton();
+      playNotificationSound()
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      animateSendButton()
 
       // Scroll to bottom with animation
       setTimeout(() => {
         if (flatListRef.current) {
           flatListRef.current.scrollToEnd({ animated: true })
         }
-      }, 100);
+      }, 100)
       
       // Show typing indicator briefly
-      setTyping(true);
-      setTimeout(() => setTyping(false), 1500);
+      setTyping(true)
+      setTimeout(() => setTyping(false), 1500)
       
     } catch (error) {
       console.error("Error sending message:", error)
@@ -239,6 +314,56 @@ const ChatScreen = () => {
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
   }
 
+  const formatLastSeen = (timestamp: string) => {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} min ago`
+    if (diffHours < 24) return `${diffHours} hr ago`
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  }
+
+  const handleScroll = (event: any) => {
+    const yOffset = event.nativeEvent.contentOffset.y
+    scrollY.setValue(yOffset)
+    
+    // Show scroll button when scrolled up
+    if (yOffset > 300) {
+      setShowScrollButton(true)
+    } else {
+      setShowScrollButton(false)
+    }
+  }
+
+  const scrollToBottom = () => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({ animated: true })
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    }
+  }
+
+  const toggleAttachmentOptions = () => {
+    setShowAttachmentOptions(!showAttachmentOptions)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+  }
+
+  const showReactionOptions = (messageId: string) => {
+    setShowReactions(messageId)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+  }
+
+  const addReaction = (messageId: string, reaction: string) => {
+    // In a real app, you would update the message with the reaction
+    console.log(`Added reaction ${reaction} to message ${messageId}`)
+    setShowReactions(null)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+  }
+
   const renderMessageItem = ({ item, index }: { item: Message, index: number }) => {
     const isMyMessage = item.senderId === user?.id
     const isFirstInGroup = index === 0 || messages[index - 1].senderId !== item.senderId
@@ -248,14 +373,23 @@ const ChatScreen = () => {
       transform: [{
         translateY: slideAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: [20, 0],
+          outputRange: [0, -20],
         })
       }],
       opacity: slideAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 1],
+        outputRange: [1, 0],
       })
     }
+
+    // Check if message contains an image URL (simplified detection)
+    const hasImage = item.text.includes('http') && 
+                    (item.text.includes('.jpg') || 
+                     item.text.includes('.png') || 
+                     item.text.includes('.jpeg') || 
+                     item.text.includes('.gif'))
+    
+    const imageUrl = hasImage ? item.text : null
 
     return (
       <Animated.View 
@@ -265,40 +399,198 @@ const ChatScreen = () => {
           index === messages.length - 1 ? slideUpAnimation : null
         ]}
       >
-        {!isMyMessage && isLastInGroup && otherUser?.photoURL && (
-          <Image
-            source={otherUser.photoURL ? { uri: otherUser.photoURL } : require("../assets/profile-avatar.png")}
-            style={styles.messageAvatar}
-          />
+        {!isMyMessage && isLastInGroup && (
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('ProfileScreen', { userId: item.senderId })}
+          >
+            <Image
+              source={otherUser?.photoURL ? { uri: otherUser.photoURL } : require("../assets/profile-avatar.png")}
+              style={styles.messageAvatar}
+            />
+            {otherUser?.isOnline && (
+              <View style={styles.onlineIndicator} />
+            )}
+          </TouchableOpacity>
         )}
         {!isMyMessage && isLastInGroup && !otherUser?.photoURL && (
-          <View style={styles.messageAvatarPlaceholder} />
-        )}
-        <View
-          style={[
-            styles.messageBubble,
-            isMyMessage
-              ? [styles.myMessageBubble, { backgroundColor: theme.primary }]
-              : [styles.otherMessageBubble, { backgroundColor: theme.secondary }],
-            isFirstInGroup ? (isMyMessage ? styles.myFirstMessage : styles.otherFirstMessage) : null,
-            isLastInGroup ? (isMyMessage ? styles.myLastMessage : styles.otherLastMessage) : null,
-          ]}
-        >
-          <Text style={[styles.messageText, { color: isMyMessage ? "#fff" : theme.text }]}>{item.text}</Text>
-          <View style={styles.messageFooter}>
-            <Text style={[styles.messageTime, { color: isMyMessage ? "#ffffffaa" : theme.text + "80" }]}>
-              {formatTimestamp(item.timestamp)}
+          <View style={[styles.messageAvatarPlaceholder, { backgroundColor: theme.primary + '40' }]}>
+            <Text style={styles.avatarInitial}>
+              {otherUser?.name?.charAt(0) || otherUser?.email?.charAt(0) || '?'}
             </Text>
-            {isMyMessage && (
-              <Ionicons 
-                name={item.read ? "checkmark-done" : "checkmark"} 
-                size={16} 
-                color={item.read ? "#ffffffaa" : "#ffffff80"} 
-                style={styles.readIndicator}
-              />
-            )}
           </View>
+        )}
+        
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onLongPress={() => showReactionOptions(item.id)}
+          delayLongPress={200}
+          style={styles.messageBubbleContainer}
+        >
+          <View
+            style={[
+              styles.messageBubble,
+              isMyMessage
+                ? [styles.myMessageBubble, { backgroundColor: theme.primary }]
+                : [styles.otherMessageBubble, { backgroundColor: isDark ? theme.card : theme.secondary + '30' }],
+              isFirstInGroup ? (isMyMessage ? styles.myFirstMessage : styles.otherFirstMessage) : null,
+              isLastInGroup ? (isMyMessage ? styles.myLastMessage : styles.otherLastMessage) : null,
+              hasImage && styles.imageBubble,
+            ]}
+          >
+            {imageUrl ? (
+              <TouchableOpacity 
+                activeOpacity={0.9} 
+                onPress={() => setShowImagePreview(imageUrl)}
+                style={styles.imageContainer}
+              >
+                <Image source={{ uri: imageUrl }} style={styles.messageImage} resizeMode="cover" />
+              </TouchableOpacity>
+            ) : (
+              <Text style={[
+                styles.messageText, 
+                { color: isMyMessage ? "#fff" : theme.text }
+              ]}>
+                {item.text}
+              </Text>
+            )}
+            
+            <View style={styles.messageFooter}>
+              <Text style={[
+                styles.messageTime, 
+                { color: isMyMessage ? "#ffffffaa" : theme.text + "80" }
+              ]}>
+                {formatTimestamp(item.timestamp)}
+              </Text>
+              {isMyMessage && (
+                <Ionicons 
+                  name={item.read ? "checkmark-done" : "checkmark"} 
+                  size={16} 
+                  color={item.read ? "#ffffffaa" : "#ffffff80"} 
+                  style={styles.readIndicator}
+                />
+              )}
+            </View>
+          </View>
+          
+          {/* Reaction button */}
+          {!showReactions && (
+            <TouchableOpacity 
+              style={[
+                styles.reactionButton,
+                isMyMessage ? styles.myReactionButton : styles.otherReactionButton
+              ]}
+              onPress={() => showReactionOptions(item.id)}
+            >
+              <MaterialCommunityIcons 
+                name="emoticon-outline" 
+                size={16} 
+                color={theme.text + '80'} 
+              />
+            </TouchableOpacity>
+          )}
+          
+          {/* Reaction options */}
+          {showReactions === item.id && (
+            <Animated.View 
+              style={[
+                styles.reactionOptions,
+                isMyMessage ? styles.myReactionOptions : styles.otherReactionOptions,
+                {
+                  opacity: reactionAnim,
+                  transform: [
+                    { scale: reactionAnim },
+                    { translateY: reactionAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [10, 0]
+                    })}
+                  ]
+                }
+              ]}
+            >
+              {['❤️', '👍', '😂', '😮', '😢', '🙏'].map((reaction) => (
+                <TouchableOpacity
+                  key={reaction}
+                  style={styles.reactionOption}
+                  onPress={() => addReaction(item.id, reaction)}
+                >
+                  <Text style={styles.reactionEmoji}>{reaction}</Text>
+                </TouchableOpacity>
+              ))}
+            </Animated.View>
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+    )
+  }
+
+  const renderDay = (timestamp: string) => {
+    const date = new Date(timestamp)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    let dayText
+    if (date.toDateString() === today.toDateString()) {
+      dayText = 'Today'
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      dayText = 'Yesterday'
+    } else {
+      dayText = date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+      })
+    }
+    
+    return (
+      <View style={styles.dayContainer}>
+        <View style={[styles.dayBadge, { backgroundColor: isDark ? theme.card : theme.secondary + '20' }]}>
+          <Text style={[styles.dayText, { color: theme.text }]}>{dayText}</Text>
         </View>
+      </View>
+    )
+  }
+
+  const renderAttachmentOptions = () => {
+    const options = [
+      { icon: 'image-outline', label: 'Photo', color: '#4CAF50' },
+      { icon: 'camera-outline', label: 'Camera', color: '#2196F3' },
+      { icon: 'document-outline', label: 'Document', color: '#FF9800' },
+      { icon: 'location-outline', label: 'Location', color: '#9C27B0' },
+    ]
+    
+    return (
+      <Animated.View 
+        style={[
+          styles.attachmentOptionsContainer,
+          {
+            opacity: attachmentAnim,
+            transform: [
+              { translateY: attachmentAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0]
+              })}
+            ]
+          }
+        ]}
+      >
+        {options.map((option, index) => (
+          <TouchableOpacity 
+            key={option.icon} 
+            style={styles.attachmentOption}
+            onPress={() => {
+              toggleAttachmentOptions()
+              // Handle attachment option
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+            }}
+          >
+            <View style={[styles.attachmentIconContainer, { backgroundColor: option.color }]}>
+              <Ionicons name={option.icon as any} size={24} color="#fff" />
+            </View>
+            <Text style={[styles.attachmentLabel, { color: theme.text }]}>{option.label}</Text>
+          </TouchableOpacity>
+        ))}
       </Animated.View>
     )
   }
@@ -307,6 +599,7 @@ const ChatScreen = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top"]}>
       <StatusBar style={isDark ? "light" : "dark"} />
 
+      {/* Custom Header */}
       <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
         <TouchableOpacity 
           style={styles.backButton} 
@@ -316,30 +609,67 @@ const ChatScreen = () => {
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
 
-        <View style={styles.headerInfo}>
+        <TouchableOpacity 
+          style={styles.headerInfo}
+          onPress={() => navigation.navigate('ProfileScreen', { userId: otherUser?.id })}
+          onPress={() => navigation.navigate('ProfileScreen', { userId: otherUser?.id })}
+        >
           {otherUser ? (
             <>
-              <Image
-                source={otherUser.photoURL ? { uri: otherUser.photoURL } : require("../assets/profile-avatar.png")}
-                style={styles.avatar}
-              />
+              <View style={styles.avatarContainer}>
+                <Image
+                  source={otherUser.photoURL ? { uri: otherUser.photoURL } : require("../assets/profile-avatar.png")}
+                  style={styles.avatar}
+                />
+                {otherUser.isOnline && (
+                  <View style={styles.headerOnlineIndicator} />
+                )}
+              </View>
               <View style={styles.headerTextContainer}>
                 <Text style={[styles.headerName, { color: theme.text }]} numberOfLines={1}>
                   {otherUser.name || "User"}
                 </Text>
                 <Text style={[styles.headerSubtitle, { color: theme.text + "60" }]} numberOfLines={1}>
-                  {typing ? "Typing..." : otherUser.userType.charAt(0).toUpperCase() + otherUser.userType.slice(1)}
+                  {typing ? (
+                    <View style={styles.typingContainer}>
+                      <Text style={{ color: theme.primary }}>Typing</Text>
+                      <View style={styles.typingDots}>
+                        <Animated.View style={[styles.typingDot, { backgroundColor: theme.primary }]} />
+                        <Animated.View style={[styles.typingDot, { backgroundColor: theme.primary }]} />
+                        <Animated.View style={[styles.typingDot, { backgroundColor: theme.primary }]} />
+                      </View>
+                    </View>
+                  ) : (
+                    otherUser.isOnline ? 'Online' : `Last seen ${otherUser.lastSeen ? formatLastSeen(otherUser.lastSeen) : 'recently'}`
+                  )}
                 </Text>
               </View>
             </>
           ) : (
             <ActivityIndicator size="small" color={theme.primary} />
           )}
-        </View>
-
-        <TouchableOpacity style={styles.infoButton}>
-          <Ionicons name="information-circle-outline" size={24} color={theme.text} />
         </TouchableOpacity>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              // Handle voice call
+            }}
+          >
+            <Ionicons name="call-outline" size={22} color={theme.text} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              // Handle video call
+            }}
+          >
+            <Ionicons name="videocam-outline" size={22} color={theme.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -353,46 +683,84 @@ const ChatScreen = () => {
             <Text style={[styles.loadingText, { color: theme.text }]}>Loading messages...</Text>
           </View>
         ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessageItem}
-            keyExtractor={(item) => `${item.id}-${item.timestamp}`}
-            contentContainerStyle={styles.messagesList}
-            inverted={false}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-            showsVerticalScrollIndicator={false}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="chatbubble-outline" size={60} color={theme.text + "30"} />
-                <Text style={[styles.emptyTitle, { color: theme.text }]}>No messages yet</Text>
-                <Text style={[styles.emptyText, { color: theme.text + "80" }]}>
-                  Start the conversation by sending a message
-                </Text>
-              </View>
-            }
-          />
+          <>
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessageItem}
+              keyExtractor={(item) => `${item.id}-${item.timestamp}`}
+              contentContainerStyle={styles.messagesList}
+              inverted={false}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+              onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+              showsVerticalScrollIndicator={false}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Image 
+                    source={require('../assets/empty-chat.png')} 
+                    style={styles.emptyImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>No messages yet</Text>
+                  <Text style={[styles.emptyText, { color: theme.text + "80" }]}>
+                    Start the conversation by sending a message
+                  </Text>
+                </View>
+              }
+            />
+            
+            {/* Scroll to bottom button */}
+            {showScrollButton && (
+              <TouchableOpacity 
+                style={[styles.scrollButton, { backgroundColor: theme.card }]}
+                onPress={scrollToBottom}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="arrow-down" size={20} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+          </>
         )}
 
+        {/* Attachment options */}
+        {showAttachmentOptions && renderAttachmentOptions()}
+
+        {/* Input area */}
         <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-          <TouchableOpacity style={styles.plusButton}>
-            <Ionicons name="add" size={24} color={theme.primary} />
+          <TouchableOpacity 
+            style={styles.attachButton}
+            onPress={toggleAttachmentOptions}
+          >
+            <Ionicons 
+              name={showAttachmentOptions ? "close" : "add"} 
+              size={24} 
+              color={theme.primary} 
+            />
           </TouchableOpacity>
-          <TextInput
-            ref={inputRef}
-            style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-            placeholder="Type a message..."
-            placeholderTextColor={theme.text + "50"}
-            value={messageText}
-            onChangeText={setMessageText}
-            multiline
-            maxLength={500}
-            onSubmitEditing={handleSendMessage}
-            blurOnSubmit={false}
-          />
+          
+          <View style={[styles.inputWrapper, { backgroundColor: isDark ? theme.background : theme.secondary + '20' }]}>
+            <TextInput
+              ref={inputRef}
+              style={[styles.input, { color: theme.text }]}
+              placeholder="Type a message..."
+              placeholderTextColor={theme.text + "50"}
+              value={messageText}
+              onChangeText={setMessageText}
+              multiline
+              maxLength={500}
+              onSubmitEditing={handleSendMessage}
+              blurOnSubmit={false}
+            />
+            
+            <TouchableOpacity style={styles.emojiButton}>
+              <Ionicons name="happy-outline" size={24} color={theme.text + '70'} />
+            </TouchableOpacity>
+          </View>
+          
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
             <TouchableOpacity
               style={[styles.sendButton, { 
@@ -404,12 +772,48 @@ const ChatScreen = () => {
               {isSending ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Ionicons name="send" size={20} color={messageText.trim() ? "#fff" : theme.text + "60"} />
+                <Ionicons 
+                  name={messageText.trim() ? "send" : "mic-outline"} 
+                  size={20} 
+                  color={messageText.trim() ? "#fff" : theme.text + "60"} 
+                />
               )}
             </TouchableOpacity>
           </Animated.View>
         </View>
       </KeyboardAvoidingView>
+      
+      {/* Image preview modal */}
+      {showImagePreview && (
+        <Pressable 
+          style={styles.imagePreviewContainer}
+          onPress={() => setShowImagePreview(null)}
+        >
+          <BlurView intensity={90} style={StyleSheet.absoluteFill} tint={isDark ? 'dark' : 'light'} />
+          <TouchableOpacity 
+            style={styles.closePreviewButton}
+            onPress={() => setShowImagePreview(null)}
+          >
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+          <Image 
+            source={{ uri: showImagePreview }} 
+            style={styles.fullScreenImage}
+            resizeMode="contain"
+          />
+          <View style={styles.imagePreviewActions}>
+            <TouchableOpacity style={styles.imageAction}>
+              <Ionicons name="share-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.imageAction}>
+              <Ionicons name="download-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.imageAction}>
+              <Ionicons name="trash-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      )}
     </SafeAreaView>
   )
 }
@@ -440,6 +844,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginLeft: 10,
   },
+  avatarContainer: {
+    position: 'relative',
+  },
   headerTextContainer: {
     flex: 1,
     marginRight: 10,
@@ -450,6 +857,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 12,
   },
+  headerOnlineIndicator: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#fff',
+    bottom: 0,
+    right: 12,
+  },
   messageAvatar: {
     width: 32,
     height: 32,
@@ -458,6 +876,17 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginBottom: 6,
   },
+  onlineIndicator: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#4CAF50',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    bottom: 6,
+    right: 8,
+  },
   messageAvatarPlaceholder: {
     width: 32,
     height: 32,
@@ -465,7 +894,13 @@ const styles = StyleSheet.create({
     marginRight: 8,
     alignSelf: 'flex-end',
     marginBottom: 6,
-    backgroundColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   headerName: {
     fontSize: 16,
@@ -474,10 +909,13 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     marginTop: 2,
-    fontStyle: 'italic',
   },
-  infoButton: {
-    padding: 5,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerButton: {
+    padding: 8,
     marginLeft: 5,
   },
   content: {
@@ -508,11 +946,15 @@ const styles = StyleSheet.create({
   otherMessageContainer: {
     alignSelf: "flex-start",
   },
+  messageBubbleContainer: {
+    position: 'relative',
+  },
   messageBubble: {
-    borderRadius: 16,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
     minWidth: 50,
+    maxWidth: '100%',
   },
   myMessageBubble: {
     borderBottomRightRadius: 4,
@@ -521,16 +963,29 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   myFirstMessage: {
-    borderTopRightRadius: 16,
+    borderTopRightRadius: 18,
   },
   otherFirstMessage: {
-    borderTopLeftRadius: 16,
+    borderTopLeftRadius: 18,
   },
   myLastMessage: {
-    borderBottomRightRadius: 16,
+    borderBottomRightRadius: 18,
   },
   otherLastMessage: {
-    borderBottomLeftRadius: 16,
+    borderBottomLeftRadius: 18,
+  },
+  imageBubble: {
+    padding: 4,
+    backgroundColor: 'transparent',
+  },
+  imageContainer: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 14,
   },
   messageText: {
     fontSize: 16,
@@ -549,6 +1004,68 @@ const styles = StyleSheet.create({
   readIndicator: {
     marginLeft: 4,
   },
+  reactionButton: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  myReactionButton: {
+    left: -14,
+    bottom: 10,
+  },
+  otherReactionButton: {
+    right: -14,
+    bottom: 10,
+  },
+  reactionOptions: {
+    position: 'absolute',
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+    zIndex: 10,
+  },
+  myReactionOptions: {
+    bottom: -50,
+    right: 0,
+  },
+  otherReactionOptions: {
+    bottom: -50,
+    left: 0,
+  },
+  reactionOption: {
+    padding: 6,
+  },
+  reactionEmoji: {
+    fontSize: 20,
+  },
+  dayContainer: {
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  dayBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  dayText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -556,10 +1073,15 @@ const styles = StyleSheet.create({
     padding: 40,
     marginTop: 100,
   },
+  emptyImage: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+    opacity: 0.7,
+  },
   emptyTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginTop: 20,
     marginBottom: 10,
   },
   emptyText: {
@@ -574,18 +1096,30 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  plusButton: {
+  attachButton: {
     marginRight: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
   },
   input: {
     flex: 1,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 15,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     maxHeight: 100,
     fontSize: 16,
     lineHeight: 20,
+  },
+  emojiButton: {
+    marginLeft: 5,
   },
   sendButton: {
     width: 40,
@@ -594,6 +1128,99 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
+  },
+  scrollButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typingDots: {
+    flexDirection: 'row',
+    marginLeft: 5,
+  },
+  typingDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginHorizontal: 1,
+    opacity: 0.8,
+  },
+  attachmentOptionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 15,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  attachmentOption: {
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
+  attachmentIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  attachmentLabel: {
+    fontSize: 12,
+  },
+  imagePreviewContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  closePreviewButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 1001,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: width * 0.9,
+    height: height * 0.7,
+    borderRadius: 10,
+  },
+  imagePreviewActions: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: 50,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 25,
+    padding: 10,
+  },
+  imageAction: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 })
 
