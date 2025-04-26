@@ -18,6 +18,7 @@ import type { UserType } from "../types"
 
 // Define the User type
 export interface User {
+  [x: string]: string | undefined
   uid: string
   id: string
   email: string | null

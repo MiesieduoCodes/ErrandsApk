@@ -106,7 +106,15 @@ const HomeScreen = () => {
             10, // 10km radius
             user.id,
           )
-          setNearbyUsers(nearby)
+          const formattedNearby = nearby.map((user: any) => ({
+            id: user.id,
+            latitude: user.latitude,
+            longitude: user.longitude,
+            name: user.name,
+            user_type: user.user_type,
+            distance: user.distance,
+          }))
+          setNearbyUsers(formattedNearby)
         }
       } catch (error) {
         console.error("Error getting location:", error)
@@ -180,7 +188,8 @@ const HomeScreen = () => {
 
     try {
       setIsSubmitting(true)
-      const errand = await errandService.getErrandByTransactionCode(transactionCode)
+      const errand: { errand_type: string; status: string; pickup_address?: string; dropoff_address?: string } =
+        (await errandService.getErrandByTransactionCode(transactionCode)) || { errand_type: "", status: "", pickup_address: undefined, dropoff_address: undefined }
 
       if (!errand) {
         Alert.alert("Error", "No errand found with this transaction code")
@@ -760,36 +769,6 @@ const styles = StyleSheet.create({
   priceValue: {
     fontSize: 16,
     fontWeight: "bold",
-  },
-  paymentMethod: {
-    marginBottom: 20,
-  },
-  paymentLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 10,
-  },
-  paymentOptions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  paymentOption: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-    marginHorizontal: 5,
-  },
-  selectedPaymentOption: {
-    borderColor: "#34D186",
-  },
-  paymentOptionText: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 8,
   },
   paymentMethod: {
     marginBottom: 20,

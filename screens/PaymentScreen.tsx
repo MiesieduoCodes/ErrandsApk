@@ -1,7 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from "react-native"
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  ActivityIndicator, 
+  Alert, 
+  TextInput 
+} from "react-native"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -9,17 +18,46 @@ import { useTheme } from "../context/ThemeContext"
 import { useAuth } from "../context/AuthContext"
 import { paymentService, type PaymentMethod } from "../services/payment"
 import { errandService } from "../services/database"
+import { RouteProp, NavigationProp } from "@react-navigation/native"
+import type { RootStackParamList } from "../types"
 
-const PaymentScreen = ({ route, navigation }) => {
+interface PaymentMethodDetails {
+  id: string
+  type: string
+  last4?: string
+  expiryMonth?: string
+  expiryYear?: string
+  cardType?: string
+  isDefault?: boolean
+}
+
+interface Errand {
+  id: string
+  errandType: string
+  // Add other errand properties as needed
+}
+
+type PaymentScreenRouteParams = {
+  errandId?: string
+  amount: number
+  receiverId?: string
+}
+
+type PaymentScreenProps = {
+  route: RouteProp<{ Payment: PaymentScreenRouteParams }, "Payment">
+  navigation: NavigationProp<RootStackParamList, "Payment">
+}
+
+const PaymentScreen = ({ route, navigation }: PaymentScreenProps) => {
   const { errandId, amount, receiverId } = route.params
   const { theme, isDark } = useTheme()
   const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash")
-  const [savedCards, setSavedCards] = useState([])
-  const [selectedCard, setSelectedCard] = useState(null)
-  const [errand, setErrand] = useState(null)
+  const [savedCards, setSavedCards] = useState<PaymentMethodDetails[]>([])
+  const [selectedCard, setSelectedCard] = useState<PaymentMethodDetails | null>(null)
+  const [errand, setErrand] = useState<Errand | null>(null)
 
   // Card details for new card
   const [cardNumber, setCardNumber] = useState("")
@@ -34,13 +72,13 @@ const PaymentScreen = ({ route, navigation }) => {
         // Get errand details
         if (errandId) {
           const errandData = await errandService.getErrandById(errandId)
-          setErrand(errandData)
+          setErrand(errandData as Errand)
         }
 
         // Get saved payment methods
         if (user?.id) {
           const paymentMethods = await paymentService.getSavedPaymentMethods(user.id)
-          const cards = paymentMethods.filter((method) => method.type === "card")
+          const cards = paymentMethods.filter((method) => method.type === "card") as PaymentMethodDetails[]
           setSavedCards(cards)
 
           // Set default card if available
@@ -69,6 +107,10 @@ const PaymentScreen = ({ route, navigation }) => {
     try {
       setIsProcessing(true)
 
+      if (!errandId) {
+        throw new Error("Errand ID is required")
+      }
+
       // Create payment record
       const payment = await paymentService.createPayment({
         errandId,
@@ -87,8 +129,9 @@ const PaymentScreen = ({ route, navigation }) => {
       } else if (paymentMethod === "card") {
         // For card payments, process with Flutterwave
         const result = await paymentService.processFlutterwavePayment(payment, {
-          email: user.email,
+          email: user.email || "",
           name: user.displayName || "User",
+          phoneNumber: user.phoneNumber
         })
 
         if (result.success) {
@@ -171,9 +214,11 @@ const PaymentScreen = ({ route, navigation }) => {
         <View style={[styles.amountContainer, { backgroundColor: theme.card }]}>
           <Text style={[styles.amountLabel, { color: theme.text + "80" }]}>Amount to Pay</Text>
           <Text style={[styles.amount, { color: theme.text }]}>₦{amount.toFixed(2)}</Text>
-          <Text style={[styles.errandInfo, { color: theme.text + "80" }]}>
-            {errand?.errandType.charAt(0).toUpperCase() + errand?.errandType.slice(1)} Errand
-          </Text>
+          {errand?.errandType && (
+            <Text style={[styles.errandInfo, { color: theme.text + "80" }]}>
+              {errand.errandType.charAt(0).toUpperCase() + errand.errandType.slice(1)} Errand
+            </Text>
+          )}
         </View>
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Payment Method</Text>
@@ -458,6 +503,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
+    paddingBottom: 40,
   },
   amountContainer: {
     padding: 20,

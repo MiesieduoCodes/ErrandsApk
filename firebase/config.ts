@@ -1,12 +1,9 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  initializeAuth,
-  getAuth,
-  Auth,
-} from "firebase/auth";
-import { getDatabase } from "firebase/database";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+// src/firebase.ts
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { initializeAuth, getAuth, Auth } from "firebase/auth";
+import { getDatabase, Database } from "firebase/database";
+import { getFirestore, enableIndexedDbPersistence, Firestore } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQLHTMNHexjbSJXsATVICgNSKVu1o4F8A",
@@ -19,19 +16,30 @@ const firebaseConfig = {
   measurementId: "G-DLM5G0NPFZ",
 };
 
-// Make sure Firebase is only initialized once
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase with type
+const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Auth
+// Initialize Auth with type
 const auth: Auth = getAuth(app);
 
-// Initialize Database
-const database = getDatabase(app);
+// Initialize Realtime Database with type and offline persistence
+const database: Database = getDatabase(app);
+// Note: RTDB offline persistence is not supported in the Web SDK.
+console.warn("RTDB offline persistence is not supported in the Web SDK.");
 
-// Initialize Firestore
-const db = getFirestore(app);
+// Initialize Firestore with type and offline persistence
+const db: Firestore = getFirestore(app);
+enableIndexedDbPersistence(db)
+  .then(() => console.log("Firestore persistence enabled"))
+  .catch((err: { code: string }) => {
+    if (err.code === "failed-precondition") {
+      console.warn("Firestore persistence already enabled in another tab.");
+    } else if (err.code === "unimplemented") {
+      console.warn("This browser doesn't support Firestore offline persistence.");
+    }
+  });
 
-// Initialize Storage
-const storage = getStorage(app);
+// Initialize Storage with type
+const storage: FirebaseStorage = getStorage(app);
 
 export { app, auth, database, db, storage };

@@ -377,6 +377,7 @@ const styles = StyleSheet.create({
   },
   profileActions: {
     flexDirection: "column",
+    gap: 20,
     justifyContent: "space-between",
     height: 70,
   },

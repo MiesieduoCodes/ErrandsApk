@@ -12,6 +12,8 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Animated,
+  Easing,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
@@ -38,6 +40,7 @@ const ChatScreen = () => {
   const [isSending, setIsSending] = useState(false)
   const [chatData, setChatData] = useState<Chat | null>(null)
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [typing, setTyping] = useState(false);
   
   interface OtherUser {
     name?: string
@@ -49,6 +52,11 @@ const ChatScreen = () => {
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null)
   const flatListRef = useRef<FlatList<Message>>(null)
   const lastMessageCount = useRef(0)
+  const inputRef = useRef<TextInput>(null)
+
+  // Animation values
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
   // Load sound effect
   useEffect(() => {
@@ -90,9 +98,41 @@ const ChatScreen = () => {
     if (messages.length > lastMessageCount.current && sound) {
       playNotificationSound();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      animateNewMessage();
     }
     lastMessageCount.current = messages.length;
   }, [messages.length]);
+
+  const animateNewMessage = () => {
+    Animated.sequence([
+      Animated.timing(slideAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.exp),
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 5,
+        useNativeDriver: true,
+      })
+    ]).start();
+  };
+
+  const animateSendButton = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 3,
+        useNativeDriver: true,
+      })
+    ]).start();
+  };
 
   const playNotificationSound = async () => {
     try {
@@ -165,18 +205,26 @@ const ChatScreen = () => {
       setIsSending(true)
       const newMessage = await chatService.sendMessage(chatId, user.id, messageText.trim())
 
-      // Update local state
+      // Update local state with animation
       setMessages((prevMessages) => [...prevMessages, newMessage])
       setMessageText("")
 
       // Play sound and haptic feedback for sent message
       playNotificationSound();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      animateSendButton();
 
-      // Scroll to bottom
-      if (flatListRef.current) {
-        flatListRef.current.scrollToEnd({ animated: true })
-      }
+      // Scroll to bottom with animation
+      setTimeout(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToEnd({ animated: true })
+        }
+      }, 100);
+      
+      // Show typing indicator briefly
+      setTyping(true);
+      setTimeout(() => setTyping(false), 1500);
+      
     } catch (error) {
       console.error("Error sending message:", error)
     } finally {
@@ -191,16 +239,40 @@ const ChatScreen = () => {
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
   }
 
-  const renderMessageItem = ({ item }: { item: Message }) => {
+  const renderMessageItem = ({ item, index }: { item: Message, index: number }) => {
     const isMyMessage = item.senderId === user?.id
+    const isFirstInGroup = index === 0 || messages[index - 1].senderId !== item.senderId
+    const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId !== item.senderId
+
+    const slideUpAnimation = {
+      transform: [{
+        translateY: slideAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [20, 0],
+        })
+      }],
+      opacity: slideAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 1],
+      })
+    }
 
     return (
-      <View style={[styles.messageContainer, isMyMessage ? styles.myMessageContainer : styles.otherMessageContainer]}>
-        {!isMyMessage && otherUser?.photoURL && (
+      <Animated.View 
+        style={[
+          styles.messageContainer, 
+          isMyMessage ? styles.myMessageContainer : styles.otherMessageContainer,
+          index === messages.length - 1 ? slideUpAnimation : null
+        ]}
+      >
+        {!isMyMessage && isLastInGroup && otherUser?.photoURL && (
           <Image
             source={otherUser.photoURL ? { uri: otherUser.photoURL } : require("../assets/profile-avatar.png")}
             style={styles.messageAvatar}
           />
+        )}
+        {!isMyMessage && isLastInGroup && !otherUser?.photoURL && (
+          <View style={styles.messageAvatarPlaceholder} />
         )}
         <View
           style={[
@@ -208,6 +280,8 @@ const ChatScreen = () => {
             isMyMessage
               ? [styles.myMessageBubble, { backgroundColor: theme.primary }]
               : [styles.otherMessageBubble, { backgroundColor: theme.secondary }],
+            isFirstInGroup ? (isMyMessage ? styles.myFirstMessage : styles.otherFirstMessage) : null,
+            isLastInGroup ? (isMyMessage ? styles.myLastMessage : styles.otherLastMessage) : null,
           ]}
         >
           <Text style={[styles.messageText, { color: isMyMessage ? "#fff" : theme.text }]}>{item.text}</Text>
@@ -225,7 +299,7 @@ const ChatScreen = () => {
             )}
           </View>
         </View>
-      </View>
+      </Animated.View>
     )
   }
 
@@ -254,7 +328,7 @@ const ChatScreen = () => {
                   {otherUser.name || "User"}
                 </Text>
                 <Text style={[styles.headerSubtitle, { color: theme.text + "60" }]} numberOfLines={1}>
-                  {otherUser.userType.charAt(0).toUpperCase() + otherUser.userType.slice(1)}
+                  {typing ? "Typing..." : otherUser.userType.charAt(0).toUpperCase() + otherUser.userType.slice(1)}
                 </Text>
               </View>
             </>
@@ -283,11 +357,14 @@ const ChatScreen = () => {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessageItem}
-            keyExtractor={(item) => item.id || item.timestamp}
+            keyExtractor={(item) => `${item.id}-${item.timestamp}`}
             contentContainerStyle={styles.messagesList}
             inverted={false}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             showsVerticalScrollIndicator={false}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="chatbubble-outline" size={60} color={theme.text + "30"} />
@@ -301,7 +378,11 @@ const ChatScreen = () => {
         )}
 
         <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+          <TouchableOpacity style={styles.plusButton}>
+            <Ionicons name="add" size={24} color={theme.primary} />
+          </TouchableOpacity>
           <TextInput
+            ref={inputRef}
             style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
             placeholder="Type a message..."
             placeholderTextColor={theme.text + "50"}
@@ -309,21 +390,24 @@ const ChatScreen = () => {
             onChangeText={setMessageText}
             multiline
             maxLength={500}
+            onSubmitEditing={handleSendMessage}
+            blurOnSubmit={false}
           />
-          <TouchableOpacity
-            style={[styles.sendButton, { 
-              backgroundColor: messageText.trim() ? theme.primary : theme.text + "20",
-              opacity: isSending || !messageText.trim() ? 0.6 : 1
-            }]}
-            onPress={handleSendMessage}
-            disabled={isSending || !messageText.trim()}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="send" size={20} color={messageText.trim() ? "#fff" : theme.text + "60"} />
-            )}
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <TouchableOpacity
+              style={[styles.sendButton, { 
+                backgroundColor: messageText.trim() ? theme.primary : theme.text + "20",
+              }]}
+              onPress={handleSendMessage}
+              disabled={isSending || !messageText.trim()}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="send" size={20} color={messageText.trim() ? "#fff" : theme.text + "60"} />
+              )}
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -374,6 +458,15 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginBottom: 6,
   },
+  messageAvatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+    alignSelf: 'flex-end',
+    marginBottom: 6,
+    backgroundColor: '#ccc',
+  },
   headerName: {
     fontSize: 16,
     fontWeight: "600",
@@ -381,6 +474,7 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     marginTop: 2,
+    fontStyle: 'italic',
   },
   infoButton: {
     padding: 5,
@@ -403,7 +497,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   messageContainer: {
-    marginBottom: 12,
+    marginBottom: 4,
     maxWidth: "80%",
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -425,6 +519,18 @@ const styles = StyleSheet.create({
   },
   otherMessageBubble: {
     borderBottomLeftRadius: 4,
+  },
+  myFirstMessage: {
+    borderTopRightRadius: 16,
+  },
+  otherFirstMessage: {
+    borderTopLeftRadius: 16,
+  },
+  myLastMessage: {
+    borderBottomRightRadius: 16,
+  },
+  otherLastMessage: {
+    borderBottomLeftRadius: 16,
   },
   messageText: {
     fontSize: 16,
@@ -467,6 +573,9 @@ const styles = StyleSheet.create({
     padding: 10,
     paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  plusButton: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
