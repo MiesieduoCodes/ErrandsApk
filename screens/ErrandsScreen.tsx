@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    paddingTop: 10,
+    paddingTop: 30,
     paddingHorizontal: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,

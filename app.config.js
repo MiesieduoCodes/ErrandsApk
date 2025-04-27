@@ -5,6 +5,7 @@ module.exports = {
     orientation: "portrait",
     icon: "./assets/logo.png",
     userInterfaceStyle: "automatic",
+    newArchEnabled: true,
     splash: {
       image: "./assets/logo.png",
       resizeMode: "contain",

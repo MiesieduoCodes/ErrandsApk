@@ -391,7 +391,7 @@ const SettingsScreen = () => {
 
         {/* Version Info */}
         <View style={styles.versionContainer}>
-          <Text style={[styles.versionText, { color: textColor }]}>Version 1.1.0</Text>
+          <Text style={[styles.versionText, { color: textColor }]}>Version 2.1.0</Text>
         </View>
       </ScrollView>
     </View>
@@ -402,12 +402,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  
   },
   scrollContainer: {
     flexGrow: 1,
     paddingBottom: 100,
     paddingHorizontal: 15,
-    paddingTop: 25,
+    paddingTop: 75,
   },
   profileSection: {
     alignItems: "center",

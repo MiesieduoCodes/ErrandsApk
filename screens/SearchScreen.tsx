@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 10,
+    paddingTop: 30,
     paddingHorizontal: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
@@ -305,9 +305,9 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     flexDirection: 'row',
-    marginHorizontal: 20,
     marginBottom: 15,
     borderRadius: 8,
+    marginTop: 20,
     overflow: 'hidden',
     borderWidth: 1,
   },
