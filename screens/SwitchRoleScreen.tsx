@@ -2,10 +2,17 @@
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, CommonActions } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import type { UserType } from "../context/AuthContext"
+
+// Define your navigation types
+type RootStackParamList = {
+  Main: undefined;  // Your root navigator
+  SwitchRole: undefined;
+  // Add other routes as needed
+}
 
 const SwitchRole = () => {
   const { user, switchUserRole } = useAuth()
@@ -17,19 +24,24 @@ const SwitchRole = () => {
       console.log("Switching to role:", role)
       await switchUserRole(role)
 
-      // Show success message
-      Alert.alert("Role Changed", `You are now a ${role.charAt(0).toUpperCase() + role.slice(1)}`, [
-        {
-          text: "OK",
-          onPress: () => {
-            // Navigate back to main screen with reset to ensure proper navigation stack
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "TabNavigator" as never }],
-            })
+      Alert.alert(
+        "Role Changed", 
+        `You are now a ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // Proper navigation reset
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: "Main" }],
+                })
+              )
+            },
           },
-        },
-      ])
+        ]
+      )
     } catch (error) {
       console.error("Error switching role:", error)
       Alert.alert("Error", "Failed to switch role. Please try again.")
@@ -40,6 +52,7 @@ const SwitchRole = () => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? "light" : "dark"} />
 
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: theme.secondary }]}
@@ -50,9 +63,14 @@ const SwitchRole = () => {
         <Text style={[styles.title, { color: theme.text }]}>Switch Role</Text>
       </View>
 
-      <Text style={[styles.subtitle, { color: theme.text + "80" }]}>Choose which role you want to use in the app</Text>
+      {/* Subtitle */}
+      <Text style={[styles.subtitle, { color: theme.text + "80" }]}>
+        Choose which role you want to use in the app
+      </Text>
 
+      {/* Role Cards */}
       <View style={styles.rolesContainer}>
+        {/* Buyer Card */}
         <TouchableOpacity
           style={[
             styles.roleCard,
@@ -78,6 +96,7 @@ const SwitchRole = () => {
           )}
         </TouchableOpacity>
 
+        {/* Seller Card */}
         <TouchableOpacity
           style={[
             styles.roleCard,
@@ -103,6 +122,7 @@ const SwitchRole = () => {
           )}
         </TouchableOpacity>
 
+        {/* Runner Card */}
         <TouchableOpacity
           style={[
             styles.roleCard,
@@ -129,6 +149,7 @@ const SwitchRole = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Footer Note */}
       <Text style={[styles.note, { color: theme.text + "80" }]}>
         Note: You can switch between roles at any time from your profile
       </Text>

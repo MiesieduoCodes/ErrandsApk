@@ -1,5 +1,4 @@
 "use client"
-
 import { useState } from "react"
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Image, Alert } from "react-native"
 import { useNavigation } from "@react-navigation/native"
@@ -25,38 +24,158 @@ type RootStackParamList = {
   SwitchRole: undefined
   IdentityVerification: undefined
   Home: undefined
-  AuthScreen: undefined
+  Auth: undefined
+  VerifyIdentity: undefined
+  ContactSupport: undefined
+  TermsAndPrivacy: undefined
 }
 
+type UserRole = 'buyer' | 'seller' | 'runner' | 'admin'
 type NavigationProp = StackNavigationProp<RootStackParamList>
+
+interface SettingItem {
+  title: string
+  icon: JSX.Element
+  screen: keyof RootStackParamList
+}
 
 const SettingsScreen = () => {
   const { theme, toggleTheme } = useTheme()
-  const { user, userType = null, logout, updateUserProfile } = useAuth()
+  const { user, userType, logout, updateUserProfile } = useAuth()
   const navigation = useNavigation<NavigationProp>()
   const [profileImage, setProfileImage] = useState(user?.photoURL || null)
-  const [pushNotifications, setPushNotifications] = useState(true)
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [inAppNotifications, setInAppNotifications] = useState(true)
+  const [notifications, setNotifications] = useState({
+    push: true,
+    email: true,
+    inApp: true
+  })
 
+  // Theme variables
   const isDark = theme?.type === "dark"
   const textColor = isDark ? "#FFFFFF" : "#000000"
   const backgroundColor = isDark ? "#121212" : "#F5F5F5"
   const cardColor = isDark ? "#1E1E1E" : "#FFFFFF"
   const accentColor = "#FF6B00"
 
+  // Role-specific menu configurations
+  const roleSpecificSettings: Record<UserRole, SettingItem[]> = {
+    buyer: [
+      {
+        title: "Saved Addresses",
+        icon: <MaterialIcons name="location-on" size={24} color={accentColor} />,
+        screen: "SavedAddresses"
+      },
+      {
+        title: "Verify Identity",
+        icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
+        screen: "VerifyIdentity"
+      }
+    ],
+    seller: [
+      {
+        title: "Business Locations",
+        icon: <MaterialIcons name="store" size={24} color={accentColor} />,
+        screen: "BusinessLocations"
+      },
+      {
+        title: "Business Hours",
+        icon: <MaterialIcons name="access-time" size={24} color={accentColor} />,
+        screen: "BusinessHours"
+      },
+      {
+        title: "Wallet & Payouts",
+        icon: <FontAwesome5 name="wallet" size={24} color={accentColor} />,
+        screen: "Wallet"
+      },
+      {
+        title: "Verify Identity",
+        icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
+        screen: "VerifyIdentity"
+      }
+    ],
+    runner: [
+      {
+        title: "Service Areas",
+        icon: <MaterialIcons name="map" size={24} color={accentColor} />,
+        screen: "ServiceAreas"
+      },
+      {
+        title: "Availability",
+        icon: <MaterialIcons name="event-available" size={24} color={accentColor} />,
+        screen: "Availability"
+      },
+      {
+        title: "Wallet & Payouts",
+        icon: <FontAwesome5 name="wallet" size={24} color={accentColor} />,
+        screen: "Wallet"
+      },
+      {
+        title: "Verify Identity",
+        icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
+        screen: "VerifyIdentity"
+      }
+    ],
+    admin: [
+      {
+        title: "Admin Dashboard",
+        icon: <MaterialIcons name="admin-panel-settings" size={24} color={accentColor} />,
+        screen: "Home"
+      }
+    ]
+  }
+
+  // Common settings for all roles
+  const commonSettings: SettingItem[] = [
+    {
+      title: "Notifications",
+      icon: <FontAwesome5 name="credit-card" size={24} color={accentColor} />,
+      screen: "PaymentMethods"
+    },
+    {
+      title: "Switch Role",
+      icon: <MaterialIcons name="swap-horiz" size={24} color={accentColor} />,
+      screen: "SwitchRole"
+    }
+  ]
+
+  // Support settings
+  const supportSettings: SettingItem[] = [
+    {
+      title: "Help Center",
+      icon: <MaterialIcons name="help" size={24} color={accentColor} />,
+      screen: "HelpCenterScreen"
+    },
+    {
+      title: "Contact Support",
+      icon: <MaterialIcons name="contact-support" size={24} color={accentColor} />,
+      screen: "ContactSupport"
+    },
+    {
+      title: "Terms & Privacy",
+      icon: <MaterialIcons name="policy" size={24} color={accentColor} />,
+      screen: "TermsAndPrivacy"
+    },
+    {
+      title: "About",
+      icon: <Ionicons name="information-circle" size={24} color={accentColor} />,
+      screen: "About"
+    }
+  ]
+
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", onPress: () => {
+      { 
+        text: "Logout", 
+        onPress: () => {
           logout()
-          navigation.navigate("AuthScreen")
+          navigation.navigate("Auth")
         } 
       },
     ])
   }
 
-  const pickImage = async () => {
+  const handleImageUpload = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== "granted") {
       Alert.alert("Permission needed", "Please grant permission to access your photos")
@@ -70,92 +189,69 @@ const SettingsScreen = () => {
       quality: 0.5,
     })
 
-    if (!result.canceled && result.assets && result.assets[0]) {
-      const uri = result.assets[0].uri
-      const response = await fetch(uri)
-      const blob = await response.blob()
-
-      if (user?.uid) {
+    if (!result.canceled && result.assets?.[0]?.uri && user?.uid) {
+      try {
+        const uri = result.assets[0].uri
+        const response = await fetch(uri)
+        const blob = await response.blob()
         const storageRef = ref(storage, `profile_images/${user.uid}`)
-        try {
-          await uploadBytes(storageRef, blob)
-          const downloadURL = await getDownloadURL(storageRef)
-          await updateUserProfile({ photoURL: downloadURL })
-          setProfileImage(downloadURL)
-          Alert.alert("Success", "Profile image updated successfully")
-        } catch (error) {
-          console.error("Error uploading image: ", error)
-          Alert.alert("Error", "Failed to update profile image")
-        }
+        
+        await uploadBytes(storageRef, blob)
+        const downloadURL = await getDownloadURL(storageRef)
+        await updateUserProfile({ photoURL: downloadURL })
+        setProfileImage(downloadURL)
+        Alert.alert("Success", "Profile image updated successfully")
+      } catch (error) {
+        console.error("Image upload failed:", error)
+        Alert.alert("Error", "Failed to update profile image")
       }
     }
   }
 
-  const renderRoleSpecificSettings = () => {
-    if (!userType) return null;
-    
-    switch (userType) {
-      case "buyer":
-        return (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Saved Addresses</Text>
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: cardColor }]}
-              onPress={() => navigation.navigate("SavedAddresses")}
-            >
-              <MaterialIcons name="location-on" size={24} color={accentColor} />
-              <Text style={[styles.settingText, { color: textColor }]}>Manage Saved Addresses</Text>
-              <MaterialIcons name="chevron-right" size={24} color={textColor} />
-            </TouchableOpacity>
-          </View>
-        )
-      case "seller":
-        return (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Business Settings</Text>
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: cardColor }]}
-              onPress={() => navigation.navigate("BusinessLocations")}
-            >
-              <MaterialIcons name="store" size={24} color={accentColor} />
-              <Text style={[styles.settingText, { color: textColor }]}>Business Location(s)</Text>
-              <MaterialIcons name="chevron-right" size={24} color={textColor} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: cardColor }]}
-              onPress={() => navigation.navigate("BusinessHours")}
-            >
-              <MaterialIcons name="access-time" size={24} color={accentColor} />
-              <Text style={[styles.settingText, { color: textColor }]}>Business Hours</Text>
-              <MaterialIcons name="chevron-right" size={24} color={textColor} />
-            </TouchableOpacity>
-          </View>
-        )
-      case "runner":
-        return (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Runner Settings</Text>
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: cardColor }]}
-              onPress={() => navigation.navigate("ServiceAreas")}
-            >
-              <MaterialIcons name="map" size={24} color={accentColor} />
-              <Text style={[styles.settingText, { color: textColor }]}>Service Radius</Text>
-              <MaterialIcons name="chevron-right" size={24} color={textColor} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: cardColor }]}
-              onPress={() => navigation.navigate("Availability")}
-            >
-              <MaterialIcons name="event-available" size={24} color={accentColor} />
-              <Text style={[styles.settingText, { color: textColor }]}>Availability Schedule</Text>
-              <MaterialIcons name="chevron-right" size={24} color={textColor} />
-            </TouchableOpacity>
-          </View>
-        )
-      default:
-        return null
-    }
+  const renderSettingItem = (
+    title: string, 
+    icon: JSX.Element, 
+    screen: keyof RootStackParamList,
+    isLast = false,
+    isDanger = false
+  ) => (
+    <TouchableOpacity
+      style={[
+        styles.settingItem, 
+        { 
+          backgroundColor: cardColor,
+          marginBottom: isLast ? 0 : 8
+        }
+      ]}
+      onPress={() => navigation.navigate(screen)}
+    >
+      {icon}
+      <Text style={[
+        styles.settingText, 
+        { 
+          color: isDanger ? "#FF3B30" : textColor 
+        }
+      ]}>
+        {title}
+      </Text>
+      {!isDanger && <MaterialIcons name="chevron-right" size={24} color={textColor} />}
+    </TouchableOpacity>
+  )
+
+  const renderSection = (title: string, children: React.ReactNode) => (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: textColor }]}>{title}</Text>
+      {children}
+    </View>
+  )
+
+  // Early return if userType is null
+  if (!userType) {
+    return (
+      <View style={[styles.container, { backgroundColor, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: textColor }}>Loading user information...</Text>
+      </View>
+    )
   }
 
   return (
@@ -166,7 +262,7 @@ const SettingsScreen = () => {
       >
         {/* Profile Section */}
         <View style={[styles.profileSection, { backgroundColor: cardColor }]}>
-          <TouchableOpacity onPress={pickImage}>
+          <TouchableOpacity onPress={handleImageUpload}>
             {profileImage ? (
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
             ) : (
@@ -181,139 +277,119 @@ const SettingsScreen = () => {
             </View>
           </TouchableOpacity>
 
-          <Text style={[styles.userName, { color: textColor }]}>{user?.displayName || "User"}</Text>
+          <Text style={[styles.userName, { color: textColor }]}>
+            {user?.displayName || "User"}
+          </Text>
 
-          {userType && (
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>
-                {userType.charAt(0).toUpperCase() + userType.slice(1)}
-              </Text>
-            </View>
-          )}
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>
+              {userType.charAt(0).toUpperCase() + userType.slice(1)}
+            </Text>
+          </View>
 
-          <TouchableOpacity style={styles.editProfileButton} onPress={() => navigation.navigate("EditProfile")}>
+          <TouchableOpacity 
+            style={styles.editProfileButton} 
+            onPress={() => navigation.navigate("EditProfile")}
+          >
             <Text style={styles.editProfileButtonText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Theme Toggle */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Appearance</Text>
+        {/* Appearance Section */}
+        {renderSection("Appearance", 
           <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
             <Ionicons name={isDark ? "moon" : "sunny"} size={24} color={accentColor} />
             <Text style={[styles.settingText, { color: textColor }]}>Dark Mode</Text>
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
-              trackColor={{ false: "#767577", true: "#FF6B00" }}
+              trackColor={{ false: "#767577", true: accentColor }}
               thumbColor={"#f4f3f4"}
             />
           </View>
-        </View>
+        )}
 
-        {/* Notifications */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Notifications</Text>
-          <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
-            <Ionicons name="notifications" size={24} color={accentColor} />
-            <Text style={[styles.settingText, { color: textColor }]}>Push Notifications</Text>
-            <Switch
-              value={pushNotifications}
-              onValueChange={setPushNotifications}
-              trackColor={{ false: "#767577", true: "#FF6B00" }}
-              thumbColor={"#f4f3f4"}
-            />
-          </View>
-          <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
-            <Ionicons name="mail" size={24} color={accentColor} />
-            <Text style={[styles.settingText, { color: textColor }]}>Email Notifications</Text>
-            <Switch
-              value={emailNotifications}
-              onValueChange={setEmailNotifications}
-              trackColor={{ false: "#767577", true: "#FF6B00" }}
-              thumbColor={"#f4f3f4"}
-            />
-          </View>
-          <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
-            <Ionicons name="chatbubble-ellipses" size={24} color={accentColor} />
-            <Text style={[styles.settingText, { color: textColor }]}>In-App Notifications</Text>
-            <Switch
-              value={inAppNotifications}
-              onValueChange={setInAppNotifications}
-              trackColor={{ false: "#767577", true: "#FF6B00" }}
-              thumbColor={"#f4f3f4"}
-            />
-          </View>
-        </View>
+        {/* Notifications Section */}
+        {renderSection("Notifications", 
+          <>
+            <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
+              <Ionicons name="notifications" size={24} color={accentColor} />
+              <Text style={[styles.settingText, { color: textColor }]}>Push Notifications</Text>
+              <Switch
+                value={notifications.push}
+                onValueChange={(value) => setNotifications({...notifications, push: value})}
+                trackColor={{ false: "#767577", true: accentColor }}
+                thumbColor={"#f4f3f4"}
+              />
+            </View>
+            <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
+              <Ionicons name="mail" size={24} color={accentColor} />
+              <Text style={[styles.settingText, { color: textColor }]}>Email Notifications</Text>
+              <Switch
+                value={notifications.email}
+                onValueChange={(value) => setNotifications({...notifications, email: value})}
+                trackColor={{ false: "#767577", true: accentColor }}
+                thumbColor={"#f4f3f4"}
+              />
+            </View>
+          </>
+        )}
 
-        {/* Role Specific Settings */}
-        {renderRoleSpecificSettings()}
+        {/* Role-Specific Settings */}
+        {renderSection(
+          `${userType.charAt(0).toUpperCase() + userType.slice(1)} Settings`,
+          <>
+            {roleSpecificSettings[userType].map((setting: SettingItem, index: number) => 
+              renderSettingItem(
+                setting.title,
+                setting.icon,
+                setting.screen,
+                index === roleSpecificSettings[userType].length - 1
+              )
+            )}
+          </>
+        )}
 
-        {/* Payment Methods */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Payment</Text>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: cardColor }]}
-            onPress={() => navigation.navigate("PaymentMethods")}
-          >
-            <FontAwesome5 name="credit-card" size={24} color={accentColor} />
-            <Text style={[styles.settingText, { color: textColor }]}>Payment Methods</Text>
-            <MaterialIcons name="chevron-right" size={24} color={textColor} />
-          </TouchableOpacity>
-          {(userType === "seller" || userType === "runner") && (
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: cardColor }]}
-              onPress={() => navigation.navigate("Wallet")}
-            >
-              <FontAwesome5 name="wallet" size={24} color={accentColor} />
-              <Text style={[styles.settingText, { color: textColor }]}>Wallet & Payouts</Text>
-              <MaterialIcons name="chevron-right" size={24} color={textColor} />
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Common Settings */}
+        {renderSection("Account",
+          <>
+            {commonSettings.map((setting: SettingItem, index: number) => 
+              renderSettingItem(
+                setting.title,
+                setting.icon,
+                setting.screen,
+                index === commonSettings.length - 1
+              )
+            )}
+          </>
+        )}
 
-        {/* Support */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Support</Text>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: cardColor }]}
-            onPress={() => navigation.navigate("HelpCenterScreen")}
-          >
-            <MaterialIcons name="help" size={24} color={accentColor} />
-            <Text style={[styles.settingText, { color: textColor }]}>Help Center</Text>
-            <MaterialIcons name="chevron-right" size={24} color={textColor} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: cardColor }]}
-            onPress={() => navigation.navigate("About")}
-          >
-            <Ionicons name="information-circle" size={24} color={accentColor} />
-            <Text style={[styles.settingText, { color: textColor }]}>About</Text>
-            <MaterialIcons name="chevron-right" size={24} color={textColor} />
-          </TouchableOpacity>
-        </View>
+        {/* Support Section */}
+        {renderSection("Support",
+          <>
+            {supportSettings.map((setting: SettingItem, index: number) => 
+              renderSettingItem(
+                setting.title,
+                setting.icon,
+                setting.screen,
+                index === supportSettings.length - 1
+              )
+            )}
+          </>
+        )}
 
-        {/* Account */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Account</Text>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: cardColor }]}
-            onPress={() => navigation.navigate("SwitchRole")}
-          >
-            <MaterialIcons name="swap-horiz" size={24} color={accentColor} />
-            <Text style={[styles.settingText, { color: textColor }]}>Switch Role</Text>
-            <MaterialIcons name="chevron-right" size={24} color={textColor} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.settingItem, { backgroundColor: cardColor }]} 
-            onPress={handleLogout}
-          >
-            <MaterialIcons name="logout" size={24} color="#FF3B30" />
-            <Text style={[styles.settingText, { color: "#FF3B30" }]}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Logout Section */}
+        {renderSection("",
+          renderSettingItem(
+            "Logout",
+            <MaterialIcons name="logout" size={24} color="#FF3B30" />,
+            "Auth",
+            true,
+            true
+          )
+        )}
 
-        {/* Version */}
+        {/* Version Info */}
         <View style={styles.versionContainer}>
           <Text style={[styles.versionText, { color: textColor }]}>Version 1.1.0</Text>
         </View>
@@ -323,9 +399,13 @@ const SettingsScreen = () => {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+  },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 100, // Space for tab bar
+    paddingBottom: 100,
     paddingHorizontal: 15,
     paddingTop: 15,
   },
