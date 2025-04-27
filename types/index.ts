@@ -64,8 +64,10 @@ export type RootStackParamList = {
   SavedAddresses: undefined
   FavoriteRunners: undefined
   Search: undefined
-  ContactSupportScreen: undefined
+  ContactSupport: undefined
   Messages: undefined
+  Notification: undefined
+  TermsAndPrivacy: undefined
   TabNavigator: undefined;
   HelpCenterScreen: undefined;
   Chat: { chatId: string }

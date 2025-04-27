@@ -26,7 +26,8 @@ type RootStackParamList = {
   Home: undefined
   Auth: undefined
   VerifyIdentity: undefined
-  ContactSupportScreen: undefined
+  NotificationScreen: undefined
+  ContactSupport: undefined
   TermsAndPrivacy: undefined
 }
 
@@ -128,8 +129,8 @@ const SettingsScreen = () => {
   const commonSettings: SettingItem[] = [
     {
       title: "Notifications",
-      icon: <FontAwesome5 name="credit-card" size={24} color={accentColor} />,
-      screen: "PaymentMethods"
+      icon: <MaterialIcons name="notifications" size={24} color={accentColor} />,
+      screen: "NotificationScreen"
     },
     {
       title: "Switch Role",
@@ -148,7 +149,7 @@ const SettingsScreen = () => {
     {
       title: "Contact Support",
       icon: <MaterialIcons name="contact-support" size={24} color={accentColor} />,
-      screen: "ContactSupportScreen"
+      screen: "ContactSupport"
     },
     {
       title: "Terms & Privacy",
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 100,
     paddingHorizontal: 15,
-    paddingTop: 15,
+    paddingTop: 25,
   },
   profileSection: {
     alignItems: "center",

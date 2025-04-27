@@ -19,11 +19,12 @@ import SellerTabNavigator from "./SellerTabNavigator"
 import RunnerTabNavigator from "./RunnerTabNavigator"
 
 // Common Screens
-import ContactSupportScreen from "../screens/ContactSupport"
+import ContactSupport from "../screens/ContactSupport"
 import ErrandDetailsScreen from "../screens/ErrandDetailsScreen"
 import NewChatScreen from "../screens/NewChatScreen"
+import TermsAndPrivacyScreen from "../screens/TermsAndPrivacy"
 import ChatScreen from "../screens/ChatScreen"
-import NotificationsScreen from "../screens/NotificationsScreen"
+import Notification from "../screens/NotificationsScreen"
 import IdentityVerificationScreen from "../screens/IdentityVerificationScreen"
 import Payment from "../screens/PaymentScreen"
 import SwitchRole from "../screens/SwitchRoleScreen"
@@ -223,10 +224,11 @@ const MainNavigator = () => {
         <>
           <Stack.Screen name="TabNavigator" component={TabNavigator} />
           <Stack.Screen name="ErrandDetails" component={ErrandDetailsScreen} />
-          <Stack.Screen name="ContactSupportScreen" component={ContactSupportScreen} />
+          <Stack.Screen name="ContactSupport" component={ContactSupport} />
           <Stack.Screen name="NewChat" component={NewChatScreen} />
           <Stack.Screen name="Chat" component={ChatScreen} />
-          <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          <Stack.Screen name="TermsAndPrivacy" component={TermsAndPrivacyScreen} />
+          <Stack.Screen name="Notification" component={Notification} />
           <Stack.Screen name="IdentityVerification" component={IdentityVerificationScreen} />
           <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
           <Stack.Screen name="Payment" component={Payment} />

@@ -21,15 +21,15 @@ import ActivityScreen from "./screens/ActivityScreen"
 import SearchScreen from "./screens/SearchScreen"
 import ErrandsScreen from "./screens/ErrandsScreen" // Ensure the file name is correct
 import SettingsScreen from "./screens/SettingsScreen"
-import NotificationsScreen from "./screens/NotificationsScreen"
+import Notification from "./screens/NotificationsScreen"
 import IdentityVerificationScreen from "./screens/IdentityVerificationScreen"
 import Payment from "./screens/PaymentScreen"
-import ContactSupportScreen from "./screens/ContactSupport"
+import ContactSupport from "./screens/ContactSupport"
 import SwitchRole from "./screens/SwitchRoleScreen"
 import PasswordResetScreen from "./screens/PasswordResetScreen"
 import MainTabNavigator from "./navigation/MainTabNavigator"
 import ChatListScreen from "./screens/ChatListScreen"
-
+import TermsAndPrivacyScreen from "./screens/TermsAndPrivacy"
 // Components
 import OfflineIndicator from "./components/OfflineIndicator"
 
@@ -126,14 +126,15 @@ export default function App() {
               <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
               <Stack.Screen name="Main" component={MainTabNavigator} />
               <Stack.Screen name="Payment" component={Payment} />
-              <Stack.Screen name="ContactSupportScreen" component={ContactSupportScreen} />
+              <Stack.Screen name="ContactSupport" component={ContactSupport} />
               <Stack.Screen name="Chat" component={ChatScreen} />
               <Stack.Screen name="ChatList" component={ChatListScreen} />
               <Stack.Screen name="NewChat" component={NewChatScreen} />
-              <Stack.Screen name="Notifications" component={NotificationsScreen} />
+              <Stack.Screen name="Notification" component={Notification} />
               <Stack.Screen name="SwitchRole" component={SwitchRole} />
               <Stack.Screen name="Settings" component={SettingsScreen} />
               <Stack.Screen name="Nearby" component={NearbyScreen} />
+              <Stack.Screen name="TermsAndPrivacy" component={TermsAndPrivacyScreen} />
               <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
               <Stack.Screen name="Errands" component={ErrandsScreen} />
               <Stack.Screen name="Activity" component={ActivityScreen} />

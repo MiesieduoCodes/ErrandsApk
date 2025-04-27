@@ -5,7 +5,9 @@ export type RootStackParamList = {
   ContactSupportScreen: undefined
   AddProduct: undefined
   SellerTabs: undefined
-  RunnerTabs: undefined
+  TermsAndPrivacy: undefined
+  Notification: undefined
+  // RunnerTabs: undefined
   ProductDetails: { productId: string };
   Chat: { chatId: string; recipientId: string; recipientName: string }
   NewChat: undefined
