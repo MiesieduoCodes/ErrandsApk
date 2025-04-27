@@ -22,7 +22,6 @@ type RootStackParamList = {
   HelpCenterScreen: undefined
   About: undefined
   SwitchRole: undefined
-  IdentityVerification: undefined
   Home: undefined
   Auth: undefined
   IdentityVerification: undefined
