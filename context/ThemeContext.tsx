@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useState, useEffect, useContext } from "react"
-import { useColorScheme } from "react-native"
+import { ColorValue, useColorScheme } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 type ThemeMode = "light" | "dark" | "system"
@@ -33,26 +33,33 @@ interface ThemeContextType {
 
 const lightTheme: ThemeColors = {
   type: "light",
-  primary: "#34D186",
-  secondary: "#F5F5F5",
-  accent: "#FF5252",
+  primary: "#FF6B00", // Main orange
+  secondary: "#FFF4EC", // Very light orange (background tint)
+  accent: "#FF8C33", // Lighter orange
   background: "#FFFFFF",
   card: "#FFFFFF",
   text: "#333333",
-  border: "#E0E0E0"
+  border: "#FFD9C2" // Light orange border
+  ,
+  shadow: undefined,
+  textSecondary: "",
+  dark: undefined
 }
 
 const darkTheme: ThemeColors = {
   type: "dark",
-  primary: "#34D186",
-  secondary: "#2A2A2A",
-  accent: "#FF5252",
+  primary: "#FF6B00", // Main orange
+  secondary: "#2A1E14", // Dark orange-brown
+  accent: "#FF954D", // Slightly lighter orange
   background: "#121212",
-  card: "#1E1E1E",
+  card: "#1E1A16", // Dark card with orange tint
   text: "#F5F5F5",
-  border: "#333333"
+  border: "#4A3A2B" // Dark orange-brown border
+  ,
+  shadow: undefined,
+  textSecondary: "",
+  dark: undefined
 }
-
 const ThemeContext = createContext<ThemeContextType>({
   theme: lightTheme,
   isDark: false,

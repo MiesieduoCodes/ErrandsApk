@@ -26,7 +26,7 @@ type RootStackParamList = {
   Home: undefined
   Auth: undefined
   VerifyIdentity: undefined
-  ContactSupport: undefined
+  ContactSupportScreen: undefined
   TermsAndPrivacy: undefined
 }
 
@@ -148,7 +148,7 @@ const SettingsScreen = () => {
     {
       title: "Contact Support",
       icon: <MaterialIcons name="contact-support" size={24} color={accentColor} />,
-      screen: "ContactSupport"
+      screen: "ContactSupportScreen"
     },
     {
       title: "Terms & Privacy",

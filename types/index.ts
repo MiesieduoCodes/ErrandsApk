@@ -64,6 +64,7 @@ export type RootStackParamList = {
   SavedAddresses: undefined
   FavoriteRunners: undefined
   Search: undefined
+  ContactSupportScreen: undefined
   Messages: undefined
   TabNavigator: undefined;
   HelpCenterScreen: undefined;

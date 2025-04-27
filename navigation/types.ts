@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Onboarding: undefined
   Auth: undefined
   BuyerTabs: undefined
+  ContactSupportScreen: undefined
   AddProduct: undefined
   SellerTabs: undefined
   RunnerTabs: undefined

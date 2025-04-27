@@ -24,6 +24,7 @@ import SettingsScreen from "./screens/SettingsScreen"
 import NotificationsScreen from "./screens/NotificationsScreen"
 import IdentityVerificationScreen from "./screens/IdentityVerificationScreen"
 import Payment from "./screens/PaymentScreen"
+import ContactSupportScreen from "./screens/ContactSupport"
 import SwitchRole from "./screens/SwitchRoleScreen"
 import PasswordResetScreen from "./screens/PasswordResetScreen"
 import MainTabNavigator from "./navigation/MainTabNavigator"
@@ -125,6 +126,7 @@ export default function App() {
               <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
               <Stack.Screen name="Main" component={MainTabNavigator} />
               <Stack.Screen name="Payment" component={Payment} />
+              <Stack.Screen name="ContactSupportScreen" component={ContactSupportScreen} />
               <Stack.Screen name="Chat" component={ChatScreen} />
               <Stack.Screen name="ChatList" component={ChatListScreen} />
               <Stack.Screen name="NewChat" component={NewChatScreen} />

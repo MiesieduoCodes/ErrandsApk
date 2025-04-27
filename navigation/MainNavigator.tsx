@@ -19,6 +19,7 @@ import SellerTabNavigator from "./SellerTabNavigator"
 import RunnerTabNavigator from "./RunnerTabNavigator"
 
 // Common Screens
+import ContactSupportScreen from "../screens/ContactSupport"
 import ErrandDetailsScreen from "../screens/ErrandDetailsScreen"
 import NewChatScreen from "../screens/NewChatScreen"
 import ChatScreen from "../screens/ChatScreen"
@@ -222,6 +223,7 @@ const MainNavigator = () => {
         <>
           <Stack.Screen name="TabNavigator" component={TabNavigator} />
           <Stack.Screen name="ErrandDetails" component={ErrandDetailsScreen} />
+          <Stack.Screen name="ContactSupportScreen" component={ContactSupportScreen} />
           <Stack.Screen name="NewChat" component={NewChatScreen} />
           <Stack.Screen name="Chat" component={ChatScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
