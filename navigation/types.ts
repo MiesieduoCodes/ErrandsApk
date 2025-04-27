@@ -5,6 +5,8 @@ export type RootStackParamList = {
   ContactSupportScreen: undefined
   AddProduct: undefined
   SellerTabs: undefined
+  AboutScreen: undefined
+  BusinessHoursScreen:undefined
   TermsAndPrivacy: undefined
   Notification: undefined
   // RunnerTabs: undefined

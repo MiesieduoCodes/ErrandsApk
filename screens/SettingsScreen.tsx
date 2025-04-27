@@ -13,14 +13,14 @@ import type { StackNavigationProp } from "@react-navigation/stack"
 type RootStackParamList = {
   SavedAddresses: undefined
   BusinessLocations: undefined
-  BusinessHours: undefined
+  BusinessHoursScreen:undefined
   ServiceAreas: undefined
   Availability: undefined
   EditProfile: undefined
   PaymentMethods: undefined
   Wallet: undefined
   HelpCenterScreen: undefined
-  About: undefined
+  AboutScreen: undefined
   SwitchRole: undefined
   IdentityVerification: undefined
   Home: undefined
@@ -81,7 +81,7 @@ const SettingsScreen = () => {
       {
         title: "Business Hours",
         icon: <MaterialIcons name="access-time" size={24} color={accentColor} />,
-        screen: "BusinessHours"
+        screen: "BusinessHoursScreen"
       },
       {
         title: "Wallet & Payouts",
@@ -159,7 +159,7 @@ const SettingsScreen = () => {
     {
       title: "About",
       icon: <Ionicons name="information-circle" size={24} color={accentColor} />,
-      screen: "About"
+      screen: "AboutScreen"
     }
   ]
 

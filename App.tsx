@@ -20,10 +20,13 @@ import HelpCenterScreen from "./screens/HelpCenterScreen" // Ensure the file nam
 import ActivityScreen from "./screens/ActivityScreen"
 import SearchScreen from "./screens/SearchScreen"
 import ErrandsScreen from "./screens/ErrandsScreen" // Ensure the file name is correct
+import AboutScreen from "./screens/About"
+
 import SettingsScreen from "./screens/SettingsScreen"
 import Notification from "./screens/NotificationsScreen"
 import IdentityVerificationScreen from "./screens/IdentityVerificationScreen"
 import Payment from "./screens/PaymentScreen"
+import BusinessHoursScreen from "./screens/BusinessHours"
 import ContactSupport from "./screens/ContactSupport"
 import SwitchRole from "./screens/SwitchRoleScreen"
 import PasswordResetScreen from "./screens/PasswordResetScreen"
@@ -128,6 +131,8 @@ export default function App() {
               <Stack.Screen name="Payment" component={Payment} />
               <Stack.Screen name="ContactSupport" component={ContactSupport} />
               <Stack.Screen name="Chat" component={ChatScreen} />
+              <Stack.Screen name="About" component={AboutScreen} />
+              <Stack.Screen name="BusinessHours" component={BusinessHoursScreen} />
               <Stack.Screen name="ChatList" component={ChatListScreen} />
               <Stack.Screen name="NewChat" component={NewChatScreen} />
               <Stack.Screen name="Notification" component={Notification} />
