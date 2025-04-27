@@ -12,8 +12,8 @@ import type { StackNavigationProp } from "@react-navigation/stack"
 
 type RootStackParamList = {
   SavedAddresses: undefined
-  BusinessLocations: undefined
-  BusinessHours: undefined
+  BusinessLocationScreen:undefined
+  BusinessHoursScreen:undefined
   ServiceAreas: undefined
   Availability: undefined
   EditProfile: undefined
@@ -25,7 +25,8 @@ type RootStackParamList = {
   IdentityVerification: undefined
   Home: undefined
   Auth: undefined
-  Notification: undefined
+  VerifyIdentity: undefined
+  NotificationScreen: undefined
   ContactSupport: undefined
   TermsAndPrivacy: undefined
 }
@@ -68,19 +69,19 @@ const SettingsScreen = () => {
       {
         title: "Verify Identity",
         icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
-        screen: "IdentityVerification"
+        screen: "VerifyIdentity"
       }
     ],
     seller: [
       {
-        title: "Business Locations",
+        title: "Business Locationses",
         icon: <MaterialIcons name="store" size={24} color={accentColor} />,
-        screen: "BusinessLocations"
+        screen: "BusinessLocationScreen"
       },
       {
         title: "Business Hours",
         icon: <MaterialIcons name="access-time" size={24} color={accentColor} />,
-        screen: "BusinessHours"
+        screen: "BusinessHoursScreen"
       },
       {
         title: "Wallet & Payouts",
@@ -90,7 +91,7 @@ const SettingsScreen = () => {
       {
         title: "Verify Identity",
         icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
-        screen: "IdentityVerification"
+        screen: "VerifyIdentity"
       }
     ],
     runner: [
@@ -112,7 +113,7 @@ const SettingsScreen = () => {
       {
         title: "Verify Identity",
         icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
-        screen: "IdentityVerification"
+        screen: "VerifyIdentity"
       }
     ],
     admin: [
@@ -129,7 +130,7 @@ const SettingsScreen = () => {
     {
       title: "Notifications",
       icon: <MaterialIcons name="notifications" size={24} color={accentColor} />,
-      screen: "Notification"
+      screen: "NotificationScreen"
     },
     {
       title: "Switch Role",
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 100,
     paddingHorizontal: 15,
-    paddingTop: 65,
+    paddingTop: 25,
   },
   profileSection: {
     alignItems: "center",

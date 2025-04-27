@@ -7,6 +7,7 @@ export type RootStackParamList = {
   SellerTabs: undefined
   AboutScreen: undefined
   BusinessHoursScreen:undefined
+  BusinessLocationScreen:undefined
   TermsAndPrivacy: undefined
   Notification: undefined
   // RunnerTabs: undefined

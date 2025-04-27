@@ -118,6 +118,7 @@ const TermsAndPrivacyScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 25,
   },
   contentContainer: {
     paddingBottom: 40,

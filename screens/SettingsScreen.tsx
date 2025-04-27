@@ -12,7 +12,7 @@ import type { StackNavigationProp } from "@react-navigation/stack"
 
 type RootStackParamList = {
   SavedAddresses: undefined
-  BusinessLocations: undefined
+  BusinessLocationScreen:undefined
   BusinessHoursScreen:undefined
   ServiceAreas: undefined
   Availability: undefined
@@ -74,9 +74,9 @@ const SettingsScreen = () => {
     ],
     seller: [
       {
-        title: "Business Locations",
+        title: "Business Locationses",
         icon: <MaterialIcons name="store" size={24} color={accentColor} />,
-        screen: "BusinessLocations"
+        screen: "BusinessLocationScreen"
       },
       {
         title: "Business Hours",

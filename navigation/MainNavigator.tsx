@@ -21,6 +21,7 @@ import RunnerTabNavigator from "./RunnerTabNavigator"
 // Common Screens
 import AboutScreen from "../screens/About"
 import BusinessHoursScreen from "../screens/BusinessHours"
+import BusinessLocationScreen from "../screens/BusinessLocation"
 import ContactSupport from "../screens/ContactSupport"
 import ErrandDetailsScreen from "../screens/ErrandDetailsScreen"
 import NewChatScreen from "../screens/NewChatScreen"
@@ -232,6 +233,7 @@ const MainNavigator = () => {
           <Stack.Screen name="Chat" component={ChatScreen} />
           <Stack.Screen name="TermsAndPrivacy" component={TermsAndPrivacyScreen} />
           <Stack.Screen name="BusinessHours" component={BusinessHoursScreen} />
+          <Stack.Screen name="BusinessLocation" component={BusinessLocationScreen} />
           <Stack.Screen name="Notification" component={Notification} />
           <Stack.Screen name="IdentityVerification" component={IdentityVerificationScreen} />
           <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />

@@ -27,6 +27,7 @@ import Notification from "./screens/NotificationsScreen"
 import IdentityVerificationScreen from "./screens/IdentityVerificationScreen"
 import Payment from "./screens/PaymentScreen"
 import BusinessHoursScreen from "./screens/BusinessHours"
+import BusinessLocationScreen from "./screens/BusinessLocation"
 import ContactSupport from "./screens/ContactSupport"
 import SwitchRole from "./screens/SwitchRoleScreen"
 import PasswordResetScreen from "./screens/PasswordResetScreen"
@@ -133,6 +134,7 @@ export default function App() {
               <Stack.Screen name="Chat" component={ChatScreen} />
               <Stack.Screen name="About" component={AboutScreen} />
               <Stack.Screen name="BusinessHours" component={BusinessHoursScreen} />
+              <Stack.Screen name="BusinessLocationScreen" component={BusinessLocationScreen} />
               <Stack.Screen name="ChatList" component={ChatListScreen} />
               <Stack.Screen name="NewChat" component={NewChatScreen} />
               <Stack.Screen name="Notification" component={Notification} />
