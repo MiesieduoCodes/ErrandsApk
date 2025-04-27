@@ -26,6 +26,7 @@ import SettingsScreen from "./screens/SettingsScreen"
 import Notification from "./screens/NotificationsScreen"
 import IdentityVerificationScreen from "./screens/IdentityVerificationScreen"
 import Payment from "./screens/PaymentScreen"
+import WalletScreen from "./screens/Wallet"
 import BusinessHoursScreen from "./screens/BusinessHours"
 import BusinessLocationScreen from "./screens/BusinessLocation"
 import ContactSupport from "./screens/ContactSupport"
@@ -146,6 +147,7 @@ export default function App() {
               <Stack.Screen name="Errands" component={ErrandsScreen} />
               <Stack.Screen name="Activity" component={ActivityScreen} />
               <Stack.Screen name="Search" component={SearchScreen} />
+              <Stack.Screen name="Wallet" component={WalletScreen} />
               <Stack.Screen name="ErrandDetails" component={ErrandDetailsScreen} />
               <Stack.Screen name="IdentityVerification" component={IdentityVerificationScreen} />
             </Stack.Navigator>

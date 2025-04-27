@@ -65,6 +65,7 @@ export type RootStackParamList = {
   FavoriteRunners: undefined
   Search: undefined
   ContactSupport: undefined
+  Wallet: undefined
   Messages: undefined
   Notification: undefined
   TermsAndPrivacy: undefined
