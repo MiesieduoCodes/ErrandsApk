@@ -238,7 +238,7 @@ export const notificationService = {
   },
 
   // Delete notification
-  async deleteNotification(userId: string, notificationId: string): Promise<void> {
+  async deleteNotification(userId: string, notificationId: string, p0?: { read: boolean; }): Promise<void> {
     try {
       await set(ref(database, `notifications/${userId}/${notificationId}`), null);
     } catch (error) {
