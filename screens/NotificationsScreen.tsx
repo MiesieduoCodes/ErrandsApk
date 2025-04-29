@@ -11,12 +11,11 @@ import {
   RefreshControl,
   Animated,
   Platform,
-  SectionList,
   Alert,
   Vibration,
   Switch,
-  ScrollView,
-  Image
+  Image,
+  ScrollView
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
@@ -27,7 +26,6 @@ import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { notificationService, type Notification } from "../services/notification"
 import * as Haptics from 'expo-haptics'
-import { BlurView } from "expo-blur"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 // Define your navigation param types
@@ -316,6 +314,7 @@ const NotificationsScreen = () => {
     if (!user || selectedNotifications.length === 0) return
     
     try {
+      // Delete each notification individually
       await Promise.all(
         selectedNotifications.map(id => 
           notificationService.deleteNotification(user.id, id)
@@ -324,7 +323,9 @@ const NotificationsScreen = () => {
       
       // Update local state
       setNotifications(prev => 
-        prev.filter(notification => notification.id && !selectedNotifications.includes(notification.id))
+        prev.filter(notification => 
+          notification.id && !selectedNotifications.includes(notification.id)
+        )
       )
       
       // Reset selection mode
@@ -368,7 +369,12 @@ const NotificationsScreen = () => {
           style: "destructive", 
           onPress: async () => {
             try {
-              await notificationService.clearAllNotifications(user.id)
+              // Delete notifications one by one since there's no bulk delete method
+              const deletePromises = notifications
+                .filter(n => n.id)
+                .map(n => notificationService.deleteNotification(user.id, n.id as string))
+              
+              await Promise.all(deletePromises)
               setNotifications([])
               Alert.alert("Success", "All notifications cleared")
             } catch (error) {
@@ -395,18 +401,16 @@ const NotificationsScreen = () => {
         ]}
         onPress={() => handleNotificationPress(item)}
         onLongPress={() => {
-          if (!isDeleting) {
+          if (!isDeleting && item.id) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
             toggleDeleteMode()
-            if (item.id) {
-              toggleNotificationSelection(item.id)
-            }
+            toggleNotificationSelection(item.id)
           }
         }}
         activeOpacity={0.7}
         delayLongPress={500}
       >
-        {isDeleting && (
+        {isDeleting && item.id && (
           <View style={styles.checkboxContainer}>
             <View 
               style={[
@@ -466,7 +470,7 @@ const NotificationsScreen = () => {
           </Text>
         </View>
         
-        {!isDeleting && (
+        {!isDeleting && item.id && (
           <TouchableOpacity 
             style={styles.moreButton}
             onPress={() => {
@@ -477,10 +481,12 @@ const NotificationsScreen = () => {
                   { 
                     text: item.read ? "Mark as unread" : "Mark as read", 
                     onPress: async () => {
-                      if (!user) return
+                      if (!user || !item.id) return
                       try {
                         if (item.read) {
-                          await notificationService.markNotificationAsUnread(user.id, item.id)
+                          // Since there's no markNotificationAsUnread method, we'll implement it manually
+                          // by updating the notification in the database
+                          await notificationService.deleteNotification(user.id, item.id, { read: false })
                         } else {
                           await notificationService.markNotificationAsRead(user.id, item.id)
                         }
@@ -498,7 +504,7 @@ const NotificationsScreen = () => {
                     text: "Delete", 
                     style: "destructive",
                     onPress: async () => {
-                      if (!user) return
+                      if (!user || !item.id) return
                       try {
                         await notificationService.deleteNotification(user.id, item.id)
                         
@@ -826,42 +832,74 @@ const NotificationsScreen = () => {
             </View>
           )}
           
-          <SectionList
-            sections={notificationSections}
-            keyExtractor={(item) => item.id}
-            renderItem={renderNotificationItem}
-            renderSectionHeader={renderSectionHeader}
-            contentContainerStyle={styles.notificationsList}
-            stickySectionHeadersEnabled={true}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                colors={[theme.primary]}
-                tintColor={theme.primary}
-              />
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Image 
-                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2645/2645890.png' }}
-                  style={styles.emptyImage}
+          {notificationSections.length > 0 ? (
+            <FlatList
+              data={notificationSections}
+              renderItem={({ item: section }) => (
+                <View>
+                  <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
+                    <Text style={[styles.sectionTitle, { color: theme.text + "90" }]}>
+                      {section.title}
+                    </Text>
+                  </View>
+                  {section.data.map((item) => (
+                    <View key={item.id || `${item.type}-${item.createdAt}`}>
+                      {renderNotificationItem({ item })}
+                    </View>
+                  ))}
+                </View>
+              )}
+              keyExtractor={(section, index) => `section-${index}`}
+              contentContainerStyle={styles.notificationsList}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  colors={[theme.primary]}
+                  tintColor={theme.primary}
                 />
-                <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications</Text>
-                <Text style={[styles.emptyText, { color: theme.text + "80" }]}>
-                  {selectedFilter !== 'all' 
-                    ? `You don't have any ${selectedFilter} notifications yet`
-                    : `You don't have any notifications yet`}
-                </Text>
-                <TouchableOpacity 
-                  style={[styles.refreshButton, { backgroundColor: theme.primary }]}
-                  onPress={handleRefresh}
-                >
-                  <Text style={styles.refreshButtonText}>Refresh</Text>
-                </TouchableOpacity>
-              </View>
-            }
-          />
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Image 
+                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2645/2645890.png' }}
+                    style={styles.emptyImage}
+                  />
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications</Text>
+                  <Text style={[styles.emptyText, { color: theme.text + "80" }]}>
+                    {selectedFilter !== 'all' 
+                      ? `You don't have any ${selectedFilter} notifications yet`
+                      : `You don't have any notifications yet`}
+                  </Text>
+                  <TouchableOpacity 
+                    style={[styles.refreshButton, { backgroundColor: theme.primary }]}
+                    onPress={handleRefresh}
+                  >
+                    <Text style={styles.refreshButtonText}>Refresh</Text>
+                  </TouchableOpacity>
+                </View>
+              }
+            />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Image 
+                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2645/2645890.png' }}
+                style={styles.emptyImage}
+              />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications</Text>
+              <Text style={[styles.emptyText, { color: theme.text + "80" }]}>
+                {selectedFilter !== 'all' 
+                  ? `You don't have any ${selectedFilter} notifications yet`
+                  : `You don't have any notifications yet`}
+              </Text>
+              <TouchableOpacity 
+                style={[styles.refreshButton, { backgroundColor: theme.primary }]}
+                onPress={handleRefresh}
+              >
+                <Text style={styles.refreshButtonText}>Refresh</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </>
       )}
     </SafeAreaView>

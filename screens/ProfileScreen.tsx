@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#FF6B00",
+    backgroundColor: "#388E3C",
     borderRadius: 15,
     width: 30,
     height: 30,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   roleBadge: {
-    backgroundColor: "#FF6B00",
+    backgroundColor: "#388E3C",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 15,
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   editProfileButton: {
-    backgroundColor: "#FF6B00",
+    backgroundColor: "#388E3C",
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
