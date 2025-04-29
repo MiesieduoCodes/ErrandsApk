@@ -1,13 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigation/types'; // Adjust the path as needed
 
 const AboutAppScreen = () => {
   const { theme } = useTheme();
   const textColor = theme.text;
-  const cardColor = theme.card;
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const borderColor = theme.border;
+  const cardColor = theme.cardBackground || '#FFFFFF'; // Define cardColor with a default value
+
+  const navigateToTerms = () => {
+    navigation.navigate('TermsAndPrivacy'); // Replace with your actual screen name
+  };
+
+  const navigateToPrivacy = () => {
+    navigation.navigate('TermsAndPrivacy'); // Replace with your actual screen name
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -32,17 +44,17 @@ const AboutAppScreen = () => {
       </View>
 
       <View style={[styles.linksContainer, { borderColor }]}>
-        <View style={styles.linkRow}>
+        <TouchableOpacity style={styles.linkRow} onPress={navigateToTerms}>
           <Ionicons name="document-text-outline" size={22} color={textColor} />
           <Text style={[styles.linkText, { color: textColor }]}>Terms of Service</Text>
           <Ionicons name="chevron-forward" size={20} color={textColor} />
-        </View>
+        </TouchableOpacity>
         <View style={[styles.divider, { backgroundColor: borderColor }]} />
-        <View style={styles.linkRow}>
+        <TouchableOpacity style={styles.linkRow} onPress={navigateToPrivacy}>
           <Ionicons name="shield-checkmark-outline" size={22} color={textColor} />
           <Text style={[styles.linkText, { color: textColor }]}>Privacy Policy</Text>
           <Ionicons name="chevron-forward" size={20} color={textColor} />
-        </View>
+        </TouchableOpacity>
       </View>
 
       <View style={[styles.socialContainer, { backgroundColor: cardColor, borderColor }]}>

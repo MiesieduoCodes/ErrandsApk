@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 100,
     paddingHorizontal: 15,
-    paddingTop: 25,
+    paddingTop: 75,
   },
   profileSection: {
     alignItems: "center",

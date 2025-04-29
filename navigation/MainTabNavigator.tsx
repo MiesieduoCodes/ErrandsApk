@@ -11,7 +11,7 @@ import ChatListScreen from "../screens/ChatListScreen"
 import ActivityScreen from "../screens/ActivityScreen"
 
 // Buyer Screens
-import BuyerHomeScreen from "../screens/buyer/HomeScreen"
+import BuyerHomeScreen from "../screens/HomeScreen"
 import ErrandsScreen from "../screens/ErrandsScreen"
 import SearchScreen from "../screens/SearchScreen"
 

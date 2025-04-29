@@ -13,7 +13,7 @@ import type { StackNavigationProp } from "@react-navigation/stack"
 type RootStackParamList = {
   SavedAddresses: undefined
   BusinessLocationScreen:undefined
-  BusinessHours:undefined
+  BusinessHoursScreen:undefined
   ServiceAreas: undefined
   Availability: undefined
   EditProfile: undefined
@@ -22,10 +22,11 @@ type RootStackParamList = {
   HelpCenterScreen: undefined
   About: undefined
   SwitchRole: undefined
+  IdentityVerification: undefined
   Home: undefined
   Auth: undefined
-  IdentityVerification: undefined
-  Notification: undefined
+  VerifyIdentity: undefined
+  NotificationScreen: undefined
   ContactSupport: undefined
   TermsAndPrivacy: undefined
 }
@@ -55,7 +56,7 @@ const SettingsScreen = () => {
   const textColor = isDark ? "#FFFFFF" : "#000000"
   const backgroundColor = isDark ? "#121212" : "#F5F5F5"
   const cardColor = isDark ? "#1E1E1E" : "#FFFFFF"
-  const accentColor = "#FF6B00"
+  const accentColor = "#388E3C"
 
   // Role-specific menu configurations
   const roleSpecificSettings: Record<UserRole, SettingItem[]> = {
@@ -68,19 +69,19 @@ const SettingsScreen = () => {
       {
         title: "Verify Identity",
         icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
-        screen: "IdentityVerification"
+        screen: "VerifyIdentity"
       }
     ],
     seller: [
       {
-        title: "Business Locations",
+        title: "Business Locationses",
         icon: <MaterialIcons name="store" size={24} color={accentColor} />,
         screen: "BusinessLocationScreen"
       },
       {
         title: "Business Hours",
         icon: <MaterialIcons name="access-time" size={24} color={accentColor} />,
-        screen: "BusinessHours"
+        screen: "BusinessHoursScreen"
       },
       {
         title: "Wallet & Payouts",
@@ -90,7 +91,7 @@ const SettingsScreen = () => {
       {
         title: "Verify Identity",
         icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
-        screen: "IdentityVerification"
+        screen: "VerifyIdentity"
       }
     ],
     runner: [
@@ -112,7 +113,7 @@ const SettingsScreen = () => {
       {
         title: "Verify Identity",
         icon: <MaterialIcons name="verified-user" size={24} color={accentColor} />,
-        screen: "IdentityVerification"
+        screen: "VerifyIdentity"
       }
     ],
     admin: [
@@ -129,7 +130,7 @@ const SettingsScreen = () => {
     {
       title: "Notifications",
       icon: <MaterialIcons name="notifications" size={24} color={accentColor} />,
-      screen: "Notification"
+      screen: "NotificationScreen"
     },
     {
       title: "Switch Role",
@@ -229,7 +230,7 @@ const SettingsScreen = () => {
       <Text style={[
         styles.settingText, 
         { 
-          color: isDanger ? "#FF3B30" : textColor 
+          color: isDanger ? "#66BB6A" : textColor 
         }
       ]}>
         {title}
@@ -303,8 +304,8 @@ const SettingsScreen = () => {
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
-              trackColor={{ false: "#767577", true: accentColor }}
-              thumbColor={"#f4f3f4"}
+              trackColor={{ false: "#121212", true: accentColor }}
+              thumbColor={"#1B5E20"}
             />
           </View>
         )}
@@ -318,8 +319,8 @@ const SettingsScreen = () => {
               <Switch
                 value={notifications.push}
                 onValueChange={(value) => setNotifications({...notifications, push: value})}
-                trackColor={{ false: "#767577", true: accentColor }}
-                thumbColor={"#f4f3f4"}
+                trackColor={{ false: "#121212", true: accentColor }}
+                thumbColor={"#1B5E20"}
               />
             </View>
             <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
@@ -328,8 +329,8 @@ const SettingsScreen = () => {
               <Switch
                 value={notifications.email}
                 onValueChange={(value) => setNotifications({...notifications, email: value})}
-                trackColor={{ false: "#767577", true: accentColor }}
-                thumbColor={"#f4f3f4"}
+                trackColor={{ false: "#121212", true: accentColor }}
+                thumbColor={"#1B5E20"}
               />
             </View>
           </>
@@ -391,7 +392,7 @@ const SettingsScreen = () => {
 
         {/* Version Info */}
         <View style={styles.versionContainer}>
-          <Text style={[styles.versionText, { color: textColor }]}>Version 2.1.0</Text>
+          <Text style={[styles.versionText, { color: textColor }]}>Version 1.1.0</Text>
         </View>
       </ScrollView>
     </View>
@@ -402,7 +403,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-  
   },
   scrollContainer: {
     flexGrow: 1,
