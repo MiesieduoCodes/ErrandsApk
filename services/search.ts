@@ -40,9 +40,7 @@ export interface SearchFilters {
 
 export const searchService = {
   async searchUsers(
-    filters: SearchFilters,
-    userLocation?: { latitude: number; longitude: number }
-  ): Promise<User[]> {
+filters: SearchFilters, userLocation?: { latitude: number; longitude: number; }, p0?: { sortBy: "distance" | "rating" | "price" | "newest"; maxDistance: number; minRating: number; }  ): Promise<User[]> {
     try {
       const usersRef = ref(database, "users");
       const snapshot = await get(usersRef);
@@ -92,9 +90,7 @@ export const searchService = {
   },
 
   async searchProducts(
-    query: string,
-    userLocation?: { latitude: number; longitude: number }
-  ): Promise<Product[]> {
+query: string, userLocation?: { latitude: number; longitude: number; }, p0?: { sortBy: "distance" | "rating" | "price" | "newest"; maxDistance: number; priceRange: [number, number]; }  ): Promise<Product[]> {
     try {
       const productsRef = ref(database, "products");
       const snapshot = await get(productsRef);

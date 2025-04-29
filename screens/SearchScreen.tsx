@@ -31,6 +31,23 @@ type SearchResult = (User & { type: 'user' }) | (Product & { type: 'product' });
 type SearchCategory = 'runner' | 'seller' | 'product' | 'all';
 type SortOption = 'distance' | 'rating' | 'price' | 'newest';
 
+interface ExtendedUser extends User {
+  type: 'user';
+  isOnline?: boolean;
+  isVerified?: boolean;
+  reviewCount?: number;
+  tags?: string[];
+}
+
+interface ExtendedProduct extends Product {
+  type: 'product';
+  discount?: number;
+  originalPrice?: number;
+  createdAt?: number;
+}
+
+type ExtendedSearchResult = ExtendedUser | ExtendedProduct;
+
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 const SearchScreen = () => {
@@ -42,7 +59,7 @@ const SearchScreen = () => {
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<ExtendedSearchResult[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<SearchCategory>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -121,7 +138,7 @@ const SearchScreen = () => {
 
     try {
       setIsSearching(true);
-      let results: SearchResult[] = [];
+      let results: ExtendedSearchResult[] = [];
 
       // Add search query to recent searches if not empty
       if (searchQuery.trim() && !recentSearches.includes(searchQuery.trim())) {
@@ -141,7 +158,7 @@ const SearchScreen = () => {
             priceRange,
           }
         );
-        results = [...results, ...products.map(p => ({ ...p, type: 'product' }))];
+        results = [...results, ...products.map(p => ({ ...p, type: 'product' } as ExtendedProduct))];
       }
       
       if (selectedCategory === 'runner' || selectedCategory === 'seller' || selectedCategory === 'all') {
@@ -159,7 +176,7 @@ const SearchScreen = () => {
               minRating,
             }
           );
-          results = [...results, ...users.map(u => ({ ...u, type: 'user' }))];
+          results = [...results, ...users.map(u => ({ ...u, type: 'user' } as ExtendedUser))];
         }
       }
 
@@ -185,7 +202,7 @@ const SearchScreen = () => {
     }
   };
 
-  const sortResults = (results: SearchResult[], sortOption: SortOption): SearchResult[] => {
+  const sortResults = (results: ExtendedSearchResult[], sortOption: SortOption): ExtendedSearchResult[] => {
     return [...results].sort((a, b) => {
       switch (sortOption) {
         case 'distance':
@@ -204,12 +221,12 @@ const SearchScreen = () => {
     });
   };
 
-  const handleUserPress = (user: User) => {
+  const handleUserPress = (user: ExtendedUser) => {
     if (!user.id) return;
     navigation.navigate("UserProfile", { userId: user.id });
   };
 
-  const handleProductPress = (product: Product) => {
+  const handleProductPress = (product: ExtendedProduct) => {
     if (!product.id) return;
     navigation.navigate("ProductDetail", { productId: product.id });
   };
@@ -247,10 +264,10 @@ const SearchScreen = () => {
     handleSearch();
   };
 
-  const isUser = (item: SearchResult): item is User & { type: 'user' } => item.type === 'user';
-  const isProduct = (item: SearchResult): item is Product & { type: 'product' } => item.type === 'product';
+  const isUser = (item: ExtendedSearchResult): item is ExtendedUser => item.type === 'user';
+  const isProduct = (item: ExtendedSearchResult): item is ExtendedProduct => item.type === 'product';
 
-  const renderItem = ({ item }: { item: SearchResult }) => {
+  const renderItem = ({ item }: { item: ExtendedSearchResult }) => {
     if (isUser(item)) {
       return (
         <TouchableOpacity
@@ -305,7 +322,7 @@ const SearchScreen = () => {
             
             {item.tags && item.tags.length > 0 && (
               <View style={styles.tagsContainer}>
-                {item.tags.slice(0, 2).map((tag, index) => (
+                {item.tags.slice(0, 2).map((tag: string, index: number) => (
                   <View 
                     key={index} 
                     style={[styles.tagPill, { backgroundColor: theme.primary + '20' }]}
@@ -343,7 +360,7 @@ const SearchScreen = () => {
         >
           <View style={styles.productImageContainer}>
             <Image source={{ uri: item.image }} style={styles.productImage} />
-            {item.discount > 0 && (
+            {item.discount && item.discount > 0 && (
               <View style={[styles.discountBadge, { backgroundColor: theme.primary }]}>
                 <Text style={styles.discountText}>-{item.discount}%</Text>
               </View>
