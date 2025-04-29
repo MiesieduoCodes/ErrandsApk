@@ -44,13 +44,46 @@ type ChatScreenRouteProp = RouteProp<RootStackParamList, 'ChatScreen'>;
 
 const { width, height } = Dimensions.get('window')
 
+interface OtherUser {
+  id: string
+  name?: string
+  email?: string
+  photoURL?: string
+  userType: string
+  isOnline?: boolean
+  lastSeen?: string
+}
+
+const formatLastSeen = (timestamp: string | undefined, isOnline?: boolean): string => {
+  if (isOnline) {
+    return 'Online';
+  }
+
+  if (!timestamp) {
+    return 'Last seen: Unknown';
+  }
+
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hr ago`;
+  return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+};
+
 const ChatScreen = () => {
   const { user } = useAuth()
   const { theme, isDark } = useTheme()
   const navigation = useNavigation<ChatScreenNavigationProp>()
   const route = useRoute<ChatScreenRouteProp>()
   const { chatId } = route.params
-
+  const [otherUser, setOtherUser] = useState<OtherUser | null>(null)
+  const lastSeenMessage = otherUser ? formatLastSeen(otherUser.lastSeen, otherUser.isOnline) : 'Unknown';
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -63,17 +96,6 @@ const ChatScreen = () => {
   const [showReactions, setShowReactions] = useState<string | null>(null)
   const [showImagePreview, setShowImagePreview] = useState<string | null>(null)
   
-  interface OtherUser {
-    id: string
-    name?: string
-    email?: string
-    photoURL?: string
-    userType: string
-    isOnline?: boolean
-    lastSeen?: string
-  }
-  
-  const [otherUser, setOtherUser] = useState<OtherUser | null>(null)
   const flatListRef = useRef<FlatList<Message>>(null)
   const lastMessageCount = useRef(0)
   const inputRef = useRef<TextInput>(null)
@@ -312,20 +334,6 @@ const ChatScreen = () => {
     const hours = date.getHours()
     const minutes = date.getMinutes()
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
-  }
-
-  const formatLastSeen = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins} min ago`
-    if (diffHours < 24) return `${diffHours} hr ago`
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
   }
 
   const handleScroll = (event: any) => {
@@ -634,7 +642,7 @@ const ChatScreen = () => {
                       </View>
                     </View>
                   ) : (
-                    otherUser.isOnline ? 'Online' : `Last seen ${otherUser.lastSeen ? formatLastSeen(otherUser.lastSeen) : 'recently'}`
+                    otherUser.isOnline ? 'Online' : `Last seen ${otherUser.lastSeen ? formatLastSeen(otherUser.lastSeen, otherUser.isOnline) : 'recently'}`
                   )}
                 </Text>
               </View>

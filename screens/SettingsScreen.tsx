@@ -56,7 +56,7 @@ const SettingsScreen = () => {
   const textColor = isDark ? "#FFFFFF" : "#000000"
   const backgroundColor = isDark ? "#121212" : "#F5F5F5"
   const cardColor = isDark ? "#1E1E1E" : "#FFFFFF"
-  const accentColor = "#FF6B00"
+  const accentColor = "#388E3C"
 
   // Role-specific menu configurations
   const roleSpecificSettings: Record<UserRole, SettingItem[]> = {
@@ -230,7 +230,7 @@ const SettingsScreen = () => {
       <Text style={[
         styles.settingText, 
         { 
-          color: isDanger ? "#FF3B30" : textColor 
+          color: isDanger ? "#66BB6A" : textColor 
         }
       ]}>
         {title}
@@ -304,8 +304,8 @@ const SettingsScreen = () => {
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
-              trackColor={{ false: "#767577", true: accentColor }}
-              thumbColor={"#f4f3f4"}
+              trackColor={{ false: "#121212", true: accentColor }}
+              thumbColor={"#1B5E20"}
             />
           </View>
         )}
@@ -319,8 +319,8 @@ const SettingsScreen = () => {
               <Switch
                 value={notifications.push}
                 onValueChange={(value) => setNotifications({...notifications, push: value})}
-                trackColor={{ false: "#767577", true: accentColor }}
-                thumbColor={"#f4f3f4"}
+                trackColor={{ false: "#121212", true: accentColor }}
+                thumbColor={"#1B5E20"}
               />
             </View>
             <View style={[styles.settingItem, { backgroundColor: cardColor }]}>
@@ -329,8 +329,8 @@ const SettingsScreen = () => {
               <Switch
                 value={notifications.email}
                 onValueChange={(value) => setNotifications({...notifications, email: value})}
-                trackColor={{ false: "#767577", true: accentColor }}
-                thumbColor={"#f4f3f4"}
+                trackColor={{ false: "#121212", true: accentColor }}
+                thumbColor={"#1B5E20"}
               />
             </View>
           </>
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#FF6B00",
+    backgroundColor: "#388E3C",
     borderRadius: 15,
     width: 30,
     height: 30,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   roleBadge: {
-    backgroundColor: "#FF6B00",
+    backgroundColor: "#388E3C",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 15,
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   editProfileButton: {
-    backgroundColor: "#FF6B00",
+    backgroundColor: "#388E3C",
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,

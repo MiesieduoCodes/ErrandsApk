@@ -33,14 +33,13 @@ interface ThemeContextType {
 
 const lightTheme: ThemeColors = {
   type: "light",
-  primary: "#FF6B00", // Main orange
-  secondary: "#FFF4EC", // Very light orange (background tint)
-  accent: "#FF8C33", // Lighter orange
+  primary: "#4CAF50", // Main green
+  secondary: "#E8F5E9", // Very light green (background tint)
+  accent: "#81C784", // Lighter green
   background: "#FFFFFF",
   card: "#FFFFFF",
   text: "#333333",
-  border: "#FFD9C2" // Light orange border
-  ,
+  border: "#A5D6A7", // Light green border
   shadow: undefined,
   textSecondary: "",
   dark: undefined
@@ -48,14 +47,13 @@ const lightTheme: ThemeColors = {
 
 const darkTheme: ThemeColors = {
   type: "dark",
-  primary: "#FF6B00", // Main orange
-  secondary: "#2A1E14", // Dark orange-brown
-  accent: "#FF954D", // Slightly lighter orange
+  primary: "#388E3C", // Dark green
+  secondary: "#1B5E20", // Darker green
+  accent: "#66BB6A", // Slightly lighter green
   background: "#121212",
-  card: "#1E1A16", // Dark card with orange tint
-  text: "#F5F5F5",
-  border: "#4A3A2B" // Dark orange-brown border
-  ,
+  card: "#1E1A16", // Dark card with green tint
+  text: "#E0E0E0",
+  border: "#4A3A2B", // Dark border (unchanged)
   shadow: undefined,
   textSecondary: "",
   dark: undefined
