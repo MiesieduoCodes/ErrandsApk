@@ -27,7 +27,9 @@ export interface Product {
     latitude: number;
     longitude: number;
   };
+  
   distance?: number;
+  inStock?: boolean;
 }
 
 export interface SearchFilters {
