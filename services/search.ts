@@ -36,6 +36,7 @@ export interface SearchFilters {
   userType?: 'runner' | 'seller';
   maxDistance?: number;
   minRating?: number;
+  query?: string;
 }
 
 export const searchService = {

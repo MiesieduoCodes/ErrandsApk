@@ -17,10 +17,11 @@ import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
+import * as Haptics from "expo-haptics"
 
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 
-type PasswordResetScreenProps = NativeStackScreenProps<any, any>;
+type PasswordResetScreenProps = NativeStackScreenProps<any, any>
 
 const PasswordResetScreen = ({ navigation }: PasswordResetScreenProps) => {
   const { resetPassword } = useAuth()
@@ -30,8 +31,16 @@ const PasswordResetScreen = ({ navigation }: PasswordResetScreenProps) => {
   const [isSuccess, setIsSuccess] = useState(false)
 
   const handleResetPassword = async () => {
+    // Validate email
     if (!email) {
       Alert.alert("Error", "Please enter your email address")
+      return
+    }
+
+    // Simple email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      Alert.alert("Error", "Please enter a valid email address")
       return
     }
 
@@ -39,6 +48,11 @@ const PasswordResetScreen = ({ navigation }: PasswordResetScreenProps) => {
       setIsLoading(true)
       await resetPassword(email)
       setIsSuccess(true)
+
+      // Provide haptic feedback on success
+      if (Platform.OS === "ios") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      }
     } catch (error) {
       console.error("Password reset error:", error)
 
@@ -47,9 +61,16 @@ const PasswordResetScreen = ({ navigation }: PasswordResetScreenProps) => {
         errorMessage = "No account found with this email address."
       } else if ((error as any)?.code === "auth/invalid-email") {
         errorMessage = "Please enter a valid email address."
+      } else if ((error as any)?.code === "auth/too-many-requests") {
+        errorMessage = "Too many attempts. Please try again later."
       }
 
       Alert.alert("Error", errorMessage)
+
+      // Provide haptic feedback on error
+      if (Platform.OS === "ios") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -70,13 +91,17 @@ const PasswordResetScreen = ({ navigation }: PasswordResetScreenProps) => {
       </View>
 
       <View style={styles.content}>
-        <Image source={require("../assets/freepik_br_0a1bdefd-95ff-4157-8b52-51e56ad85d7c.png")} style={styles.logo} resizeMode="contain" />
+        <Image
+          source={require("../assets/freepik_br_0a1bdefd-95ff-4157-8b52-51e56ad85d7c.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
         {!isSuccess ? (
           <>
             <Text style={[styles.description, { color: theme.text + "80" }]}>
-              Don't worry. We've all been there before. Great News ! . We can help you out.
-              Enter your email address and we'll send you a link to reset your password.
+              Don't worry. We've all been there before. Great News ! . We can help you out. Enter your email address and
+              we'll send you a link to reset your password.
             </Text>
 
             <TextInput
@@ -121,6 +146,16 @@ const PasswordResetScreen = ({ navigation }: PasswordResetScreenProps) => {
               onPress={() => navigation.navigate("Auth")}
             >
               <Text style={styles.buttonText}>Back to Sign In</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resendContainer}
+              onPress={() => {
+                setIsSuccess(false)
+                setTimeout(() => handleResetPassword(), 500)
+              }}
+            >
+              <Text style={[styles.resendText, { color: theme.primary }]}>Didn't receive the email? Resend</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -198,6 +233,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginBottom: 30,
+  },
+  resendContainer: {
+    marginTop: 20,
+    padding: 10,
+  },
+  resendText: {
+    fontSize: 14,
+    textDecorationLine: "underline",
   },
 })
 

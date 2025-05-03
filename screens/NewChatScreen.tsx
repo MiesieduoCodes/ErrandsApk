@@ -35,7 +35,7 @@ const NewChatScreen = () => {
 
     try {
       setIsLoading(true)
-      const results = await searchService.searchUsers(searchQuery)
+      const results = await searchService.searchUsers({ query: searchQuery })
 
       // Filter out current user
       const filteredResults = results.filter((result) => result.id !== user.id)

@@ -269,28 +269,28 @@ export const notificationService = {
 
       switch (status) {
         case "accepted":
-          title = "Errand Accepted";
-          body = `Your ${errand.errandType} errand has been accepted by a runner.`;
+          title = "Airand Accepted";
+          body = `Your ${errand.errandType} airand has been accepted by a runner.`;
           type = "errand_accepted";
           break;
         case "in_progress":
-          title = "Errand Started";
-          body = `Your ${errand.errandType} errand is now in progress.`;
+          title = "Airand Started";
+          body = `Your ${errand.errandType} airand is now in progress.`;
           type = "errand_started";
           break;
         case "completed":
-          title = "Errand Completed";
-          body = `Your ${errand.errandType} errand has been completed.`;
+          title = "Airand Completed";
+          body = `Your ${errand.errandType} airand has been completed.`;
           type = "errand_completed";
           break;
         case "cancelled":
-          title = "Errand Cancelled";
-          body = `Your ${errand.errandType} errand has been cancelled.`;
+          title = "Airand Cancelled";
+          body = `Your ${errand.errandType} airand has been cancelled.`;
           type = "errand_cancelled";
           break;
         default:
-          title = "Errand Update";
-          body = `Your ${errand.errandType} errand status has been updated to ${status}.`;
+          title = "Airand Update";
+          body = `Your ${errand.errandType} airand status has been updated to ${status}.`;
           type = "system";
       }
 
