@@ -1409,7 +1409,7 @@ const HomeScreen = () => {
                 >
                   <Ionicons name="arrow-back" size={24} color={theme.text} />
                 </TouchableOpacity>
-                <Text style={[styles.errandTitle, { color: theme.text }]}>Request an Errand</Text>
+                <Text style={[styles.errandTitle, { color: theme.text }]}>Request an Airand</Text>
                 <View style={{ width: 40 }} />
               </View>
               
@@ -1780,7 +1780,7 @@ const HomeScreen = () => {
                   {isSubmitting ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.requestErrandButtonText}>Request Errand</Text>
+                    <Text style={styles.requestErrandButtonText}>Request Airand</Text>
                   )}
                 </TouchableOpacity>
               </View>
