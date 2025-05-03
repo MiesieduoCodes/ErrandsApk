@@ -323,27 +323,8 @@ export const userService = {
 
 // Location Services
 export const locationService = {
-  updateUserLocation(uid: string, location: { latitude: number; longitude: number }): Promise<boolean> {
-    // Implementation
-  },
-  getNearbyUsers(latitude: number, longitude: number, radiusKm: number, currentUserId: string, userType?: UserType): Promise<any[]> {
-    // Implementation
-  },
-  getSavedLocations(userId: string): Promise<{ id: string; name: string; address: string; latitude: number; longitude: number; type: string; icon: string }[]> {
-    // Mock implementation or actual logic to fetch saved locations
-    return Promise.resolve([
-      {
-        id: "1",
-        name: "Home",
-        address: "123 Main St",
-        latitude: 40.7128,
-        longitude: -74.0060,
-        type: "home",
-        icon: "home",
-      },
-    ]);
-  },
-  async setUserLocation(uid: string, location: { latitude: number; longitude: number }) {
+  // Update user location
+  async updateUserLocation(uid: string, location: { latitude: number; longitude: number }) {
     try {
       await update(ref(database, `users/${uid}`), {
         location: {

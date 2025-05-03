@@ -5,12 +5,13 @@ import Constants from "expo-constants";
 import { ref, set, get, update, push } from "firebase/database";
 import { database } from "../firebase/config";
 
-// Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true   
   }),
 });
 
@@ -26,7 +27,6 @@ export type NotificationType =
   | "new_message"
   | "system";
 
-// Notification interface
 export interface Notification {
   id?: string;
   userId: string;
@@ -38,9 +38,9 @@ export interface Notification {
   createdAt: string;
 }
 
-// Notification service
+
 export const notificationService = {
-  // Register for push notifications
+
   async registerForPushNotifications() {
     let token: string | undefined;
 
