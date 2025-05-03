@@ -1,6 +1,6 @@
 module.exports = {
-    name: "Errands App",
-    slug: "errands-app",
+    name: "Airands App",
+    slug: "airands-app",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/logo.png",
@@ -18,19 +18,19 @@ module.exports = {
     assetBundlePatterns: ["**/*"],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.miesieduo.Errand",
+      bundleIdentifier: "com.miesieduo.Airand",
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#FFFFFF",
       },
-      package: "com.miesieduo.Errand",
+      package: "com.miesieduo.Airand",
     },
     web: {
       favicon: "./assets/logo.png",
     },
-    scheme: "errandsapp",
+    scheme: "airandsapp",
     plugins: [
       "@react-native-google-signin/google-signin",
       [
