@@ -410,7 +410,7 @@ const HomeScreen = () => {
 
     try {
       setIsSubmitting(true)
-      const errand = await errandService.getErrandByTransactionCode(transactionCode)
+      const errand = await errandService.getErrandByTransactionCode(transactionCode) as unknown as RecentErrand
 
       if (!errand) {
         Alert.alert("Error", "No errand found with this transaction code")
