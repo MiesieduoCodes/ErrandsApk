@@ -18,7 +18,7 @@ import {
   Dimensions,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
+import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
@@ -30,9 +30,6 @@ import type { Chat } from "../services/chat"
 import * as Haptics from "expo-haptics"
 import { Audio } from "expo-av"
 import { BlurView } from "expo-blur"
-import * as ImagePicker from "expo-image-picker"
-import * as DocumentPicker from "expo-document-picker"
-import * as Location from "expo-location"
 
 type RootStackParamList = {
   ChatScreen: { chatId: string }
@@ -500,417 +497,66 @@ const ChatScreen = () => {
                 {formatTimestamp(item.timestamp)}
               </Text>
               {isMyMessage && (
-                <Ionicons
-                  name={item.read ? "checkmark-done" : "checkmark"}
-                  size={16}
-                  color={item.read ? "#ffffffaa" : "#ffffff80"}
-                  style={styles.readIndicator}
-                />
+                <Ionicons name={item.read ? "checkmark-done" : "checkmark"} size={16} color={theme.text + "80"} />
               )}
             </View>
-
-            {/* Display reactions */}
-            {reactions[item.id!]?.length > 0 && (
-              <View style={styles.reactionsContainer}>
-                {reactions[item.id!].map((reaction, i) => (
-                  <Text key={`${reaction.userId}-${i}`} style={styles.reactionEmoji}>
-                    {reaction.emoji}
-                  </Text>
-                ))}
-              </View>
-            )}
           </View>
 
-          {!showReactions && (
-            <TouchableOpacity
-              style={[styles.reactionButton, isMyMessage ? styles.myReactionButton : styles.otherReactionButton]}
-              onPress={() => item.id && showReactionOptions(item.id)}
-            >
-              <MaterialCommunityIcons name="emoticon-outline" size={16} color={theme.text + "80"} />
-            </TouchableOpacity>
-          )}
-
-          {showReactions === item.id && (
-            <Animated.View
-              style={[
-                styles.reactionOptions,
-                isMyMessage ? styles.myReactionOptions : styles.otherReactionOptions,
-                {
-                  opacity: reactionAnim,
-                  transform: [
-                    { scale: reactionAnim },
-                    {
-                      translateY: reactionAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [10, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {["❤️", "👍", "😂", "😮", "😢", "🙏"].map((reaction) => (
-                <TouchableOpacity
-                  key={reaction}
-                  style={styles.reactionOption}
-                  onPress={() => item.id && addReaction(item.id, reaction)}
-                >
-                  <Text style={styles.reactionEmoji}>{reaction}</Text>
-                </TouchableOpacity>
+          {item.id && reactions[item.id] && reactions[item.id].length > 0 && (
+            <View style={styles.reactionsContainer}>
+              {item.id && reactions[item.id]?.map((reaction, index) => (
+                <Text key={index} style={styles.reaction}>
+                  {reaction.emoji}
+                </Text>
               ))}
-            </Animated.View>
+            </View>
           )}
         </TouchableOpacity>
-      </Animated.View>
-    )
-  }
-
-  const renderDay = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-
-    let dayText
-    if (date.toDateString() === today.toDateString()) {
-      dayText = "Today"
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      dayText = "Yesterday"
-    } else {
-      dayText = date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
-      })
-    }
-
-    return (
-      <View style={styles.dayContainer}>
-        <View style={[styles.dayBadge, { backgroundColor: isDark ? theme.card : theme.secondary + "20" }]}>
-          <Text style={[styles.dayText, { color: theme.text }]}>{dayText}</Text>
-        </View>
-      </View>
-    )
-  }
-
-  const handleAttachmentSelection = async (type: string) => {
-    setSelectedAttachmentType(type)
-    setAttachmentInProgress(true)
-
-    try {
-      let result
-
-      if (type === "photo") {
-        result = await pickImage()
-      } else if (type === "camera") {
-        result = await takePhoto()
-      } else if (type === "document") {
-        result = await pickDocument()
-      } else if (type === "location") {
-        result = await pickLocation()
-      }
-
-      if (result) {
-        await sendAttachment(result)
-      }
-    } catch (error) {
-      console.error(`Error handling ${type} attachment:`, error)
-    } finally {
-      setAttachmentInProgress(false)
-      setShowAttachmentOptions(false)
-    }
-  }
-
-  const pickImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-
-      if (status !== "granted") {
-        alert("Sorry, we need camera roll permissions to make this work!")
-        return null
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-      })
-
-      if (!result.canceled) {
-        return {
-          uri: result.assets ? result.assets[0].uri : "",
-          type: "image",
-        }
-      }
-      return null
-    } catch (error) {
-      console.error("Error picking image:", error)
-      return null
-    }
-  }
-
-  const takePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync()
-
-      if (status !== "granted") {
-        alert("Sorry, we need camera permissions to make this work!")
-        return null
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        quality: 0.8,
-      })
-
-      if (!result.canceled) {
-        return {
-          uri: result.assets[0].uri,
-          type: "image",
-        }
-      }
-      return null
-    } catch (error) {
-      console.error("Error taking photo:", error)
-      return null
-    }
-  }
-
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        copyToCacheDirectory: true,
-      });
-  
-      if (result.type === "success") {
-        return {
-          uri: result.assets[0].uri,
-          name: result.assets[0].name,
-          type: "file",
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error("Error picking document:", error);
-      return null;
-    }
-  };
-
-  const pickLocation = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-
-      if (status !== "granted") {
-        alert("Sorry, we need location permissions to make this work!")
-        return null
-      }
-
-      const location = await Location.getCurrentPositionAsync({})
-      return {
-        coords: location.coords,
-        type: "location",
-      }
-    } catch (error) {
-      console.error("Error getting location:", error)
-      return null
-    }
-  }
-
-  const sendAttachment = async (attachment: any) => {
-    if (!user) return
-
-    try {
-      setIsSending(true)
-
-      let attachmentUrl = ""
-      let messageText = ""
-
-      if (attachment.type === "image") {
-        // Upload image to storage
-        const uploadResult = await uploadMedia(attachment.uri)
-        attachmentUrl = uploadResult.url
-        messageText = attachmentUrl
-      } else if (attachment.type === "file") {
-        // Upload file to storage
-        const uploadResult = await uploadMedia(attachment.uri, attachment.name)
-        attachmentUrl = uploadResult.url
-        messageText = `Shared a file: ${attachment.name}\n${attachmentUrl}`
-      } else if (attachment.type === "location") {
-        const { latitude, longitude } = attachment.coords
-        messageText = `Shared a location: https://maps.google.com/?q=${latitude},${longitude}`
-      }
-
-      if (messageText) {
-        const newMessage = await chatService.sendMessage(
-          chatId,
-          user.id,
-          messageText,
-          attachment.type !== "location"
-            ? {
-                url: attachmentUrl,
-                type: attachment.type,
-              }
-            : undefined,
-        )
-
-        setMessages((prevMessages) => [...prevMessages, newMessage])
-
-        playNotificationSound()
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true })
-        }, 100)
-      }
-    } catch (error) {
-      console.error("Error sending attachment:", error)
-      alert("Failed to send attachment. Please try again.")
-    } finally {
-      setIsSending(false)
-    }
-  }
-
-  const uploadMedia = async (uri: string, fileName?: string) => {
-    // This is a placeholder for your actual upload function
-    // You would typically upload to Firebase Storage or another service
-
-    // Simulate upload delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Return mock URL - replace with actual upload implementation
-    return {
-      url: uri,
-      fileName: fileName || "image.jpg",
-    }
-  }
-
-  const renderAttachmentOptions = () => {
-    const options = [
-      { icon: "image-outline", label: "Photo", color: "#4CAF50", type: "photo" },
-      { icon: "camera-outline", label: "Camera", color: "#2196F3", type: "camera" },
-      { icon: "document-outline", label: "Document", color: "#FF9800", type: "document" },
-      { icon: "location-outline", label: "Location", color: "#9C27B0", type: "location" },
-    ]
-
-    return (
-      <Animated.View
-        style={[
-          styles.attachmentOptionsContainer,
-          {
-            opacity: attachmentAnim,
-            transform: [
-              {
-                translateY: attachmentAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        {options.map((option) => (
-          <TouchableOpacity
-            key={option.icon}
-            style={styles.attachmentOption}
-            onPress={() => {
-              handleAttachmentSelection(option.type)
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-            }}
-          >
-            <View style={[styles.attachmentIconContainer, { backgroundColor: option.color }]}>
-              <Ionicons name={option.icon as any} size={24} color="#fff" />
-            </View>
-            <Text style={[styles.attachmentLabel, { color: theme.text }]}>{option.label}</Text>
-          </TouchableOpacity>
-        ))}
       </Animated.View>
     )
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top"]}>
-      <StatusBar style={isDark ? "light" : "dark"} />
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+        <StatusBar style={isDark ? "light" : "dark"} backgroundColor={theme.background} />
 
-      <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        {/* Animated Header */}
+        <Animated.View
+          style={[
+            styles.animatedHeader,
+            {
+              backgroundColor: theme.background,
+              opacity: headerOpacity,
+              transform: [{ translateY: headerTranslate }],
+            },
+          ]}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.headerInfo}
-          onPress={() => {
-            if (otherUser?.id) {
-              navigation.navigate('ProfileScreen', { userId: otherUser.id })
-            }
-          }}
-        >
-          {otherUser ? (
-            <>
-              <View style={styles.avatarContainer}>
-                <Image
-                  source={otherUser.photoURL ? { uri: otherUser.photoURL } : require("../assets/profile-avatar.png")}
-                  style={styles.avatar}
-                />
-                {otherUser.isOnline && (
-                  <View style={styles.headerOnlineIndicator} />
-                )}
+          {otherUser && (
+            <Pressable
+              style={styles.headerContent}
+              onPress={() => navigation.navigate("ProfileScreen", { userId: otherUser.id })}
+            >
+              <Image
+                source={otherUser?.photoURL ? { uri: otherUser.photoURL } : require("../assets/profile-avatar.png")}
+                style={styles.headerAvatar}
+              />
+              <View>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>{otherUser.name || otherUser.email}</Text>
+                <Text style={[styles.headerSubtitle, { color: theme.text + "80" }]}>{lastSeenMessage}</Text>
               </View>
-              <View style={styles.headerTextContainer}>
-                <Text style={[styles.headerName, { color: theme.text }]} numberOfLines={1}>
-                  {otherUser.name || "User"}
-                </Text>
-                <Text style={[styles.headerSubtitle, { color: theme.text + "60" }]} numberOfLines={1}>
-                  {typing ? (
-                    <View style={styles.typingContainer}>
-                      <Text style={{ color: theme.primary }}>Typing</Text>
-                      <View style={styles.typingDots}>
-                        <Animated.View style={[styles.typingDot, { backgroundColor: theme.primary }]} />
-                        <Animated.View style={[styles.typingDot, { backgroundColor: theme.primary }]} />
-                        <Animated.View style={[styles.typingDot, { backgroundColor: theme.primary }]} />
-                      </View>
-                    </View>
-                  ) : (
-                    otherUser.isOnline ? 'Online' : `Last seen ${otherUser.lastSeen ? formatLastSeen(otherUser.lastSeen, otherUser.isOnline) : 'recently'}`
-                  )}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <ActivityIndicator size="small" color={theme.primary} />
+            </Pressable>
           )}
-        </TouchableOpacity>
+        </Animated.View>
 
-        <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-          >
-            <Ionicons name="call-outline" size={22} color={theme.text} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-          >
-            <Ionicons name="videocam-outline" size={22} color={theme.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <KeyboardAvoidingView
-        style={styles.content}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-      >
+        {/* Chat Content */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={[styles.loadingText, { color: theme.text }]}>Loading messages...</Text>
           </View>
         ) : (
           <>
@@ -918,144 +564,159 @@ const ChatScreen = () => {
               ref={flatListRef}
               data={messages}
               renderItem={renderMessageItem}
-              keyExtractor={(item) => `${item.id}-${item.timestamp}`}
-              contentContainerStyle={styles.messagesList}
-              inverted={false}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-              onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-              showsVerticalScrollIndicator={false}
-              keyboardDismissMode="interactive"
-              keyboardShouldPersistTaps="handled"
+              keyExtractor={(item) => item.id || item.timestamp}
+              contentContainerStyle={styles.chatContainer}
               onScroll={handleScroll}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+              inverted={false}
               scrollEventThrottle={16}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Image 
-                    source={require('../assets/empty-chat.png')} 
-                    style={styles.emptyImage}
-                    resizeMode="contain"
-                  />
-                  <Text style={[styles.emptyTitle, { color: theme.text }]}>No messages yet</Text>
-                  <Text style={[styles.emptyText, { color: theme.text + "80" }]}>
-                    Start the conversation by sending a message
-                  </Text>
-                </View>
-              }
             />
-            
+
             {showScrollButton && (
-              <TouchableOpacity 
-                style={[styles.scrollButton, { backgroundColor: theme.card }]}
-                onPress={scrollToBottom}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="arrow-down" size={20} color={theme.primary} />
-              </TouchableOpacity>
-            )}
-              <TouchableOpacity 
-                style={[styles.scrollButton, { backgroundColor: theme.card }]}
-                onPress={scrollToBottom}
-                activeOpacity={0.8}
-            />
-            
-            {showScrollButton && (
-              <TouchableOpacity 
-                style={[styles.scrollButton, { backgroundColor: theme.card }]}
-                onPress={scrollToBottom}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="arrow-down" size={20} color={theme.primary} />
+              <TouchableOpacity style={styles.scrollToBottomButton} onPress={scrollToBottom}>
+                <Ionicons name="arrow-down" size={24} color={theme.text} />
               </TouchableOpacity>
             )}
           </>
         )}
 
-        {showAttachmentOptions && renderAttachmentOptions()}
-
-        <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-          <TouchableOpacity 
-            style={styles.attachButton}
-            onPress={toggleAttachmentOptions}
-          >
-            <Ionicons 
-              name={showAttachmentOptions ? "close" : "add"} 
-              size={24} 
-              color={theme.primary} 
-            />
+        {/* Input Area */}
+        <View style={[styles.inputArea, { backgroundColor: theme.background }]}>
+          <TouchableOpacity style={styles.attachmentButton} onPress={toggleAttachmentOptions}>
+            <Ionicons name="add" size={28} color={theme.primary} />
           </TouchableOpacity>
-          
-          <View style={[styles.inputWrapper, { backgroundColor: isDark ? theme.background : theme.secondary + '20' }]}>
-            <TextInput
-              ref={inputRef}
-              style={[styles.input, { color: theme.text }]}
-              placeholder="Type a message..."
-              placeholderTextColor={theme.text + "50"}
-              value={messageText}
-              onChangeText={setMessageText}
-              multiline
-              maxLength={500}
-              onSubmitEditing={handleSendMessage}
-              blurOnSubmit={false}
-            />
-            
-            <TouchableOpacity style={styles.emojiButton}>
-              <Ionicons name="happy-outline" size={24} color={theme.text + '70'} />
-            </TouchableOpacity>
-          </View>
-          
-          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+
+          <TextInput
+            ref={inputRef}
+            style={[styles.input, { color: theme.text, backgroundColor: theme.card }]}
+            placeholder="Type a message..."
+            placeholderTextColor={theme.text + "80"}
+            value={messageText}
+            onChangeText={setMessageText}
+            multiline
+            blurOnSubmit={false}
+            onSubmitEditing={handleSendMessage}
+          />
+
+          <TouchableOpacity
+            style={[styles.sendButton, { backgroundColor: theme.primary }]}
+            onPress={handleSendMessage}
+            disabled={isSending}
+          >
+            {isSending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                <Ionicons name="send" size={24} color="#fff" />
+              </Animated.View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Attachment Options */}
+        <Animated.View
+          style={[
+            styles.attachmentOptionsContainer,
+            {
+              transform: [
+                {
+                  translateY: attachmentAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: attachmentAnim,
+              backgroundColor: theme.background,
+            },
+          ]}
+        >
+          <TouchableOpacity style={styles.attachmentOption}>
+            <Ionicons name="camera" size={28} color={theme.primary} />
+            <Text style={[styles.attachmentOptionText, { color: theme.text }]}>Camera</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.attachmentOption}>
+            <Ionicons name="image" size={28} color={theme.primary} />
+            <Text style={[styles.attachmentOptionText, { color: theme.text }]}>Photo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.attachmentOption}>
+            <Ionicons name="document" size={28} color={theme.primary} />
+            <Text style={[styles.attachmentOptionText, { color: theme.text }]}>Document</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.attachmentOption}>
+            <Ionicons name="location" size={28} color={theme.primary} />
+            <Text style={[styles.attachmentOptionText, { color: theme.text }]}>Location</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Reaction Options */}
+        <BlurView style={styles.reactionOptionsOverlay} intensity={30} tint={isDark ? "dark" : "light"}>
+          <Animated.View
+            style={[
+              styles.reactionOptionsContainer,
+              {
+                transform: [
+                  {
+                    translateY: reactionAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [100, 0],
+                    }),
+                  },
+                ],
+                opacity: reactionAnim,
+              },
+            ]}
+          >
             <TouchableOpacity
-              style={[styles.sendButton, { 
-                backgroundColor: messageText.trim() ? theme.primary : theme.text + "20",
-              }]}
-              onPress={handleSendMessage}
-              disabled={isSending || !messageText.trim()}
+              style={styles.reactionOption}
+              onPress={() => showReactions && addReaction(showReactions, "👍")}
             >
-              {isSending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons 
-                  name={messageText.trim() ? "send" : "mic-outline"} 
-                  size={20} 
-                  color={messageText.trim() ? "#fff" : theme.text + "60"} 
-                />
-              )}
+              <Text style={styles.reactionOptionText}>👍</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.reactionOption}
+              onPress={() => showReactions && addReaction(showReactions, "❤️")}
+            >
+              <Text style={styles.reactionOptionText}>❤️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.reactionOption}
+              onPress={() => showReactions && addReaction(showReactions, "😂")}
+            >
+              <Text style={styles.reactionOptionText}>😂</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.reactionOption}
+              onPress={() => showReactions && addReaction(showReactions, "😮")}
+            >
+              <Text style={styles.reactionOptionText}>😮</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.reactionOption}
+              onPress={() => showReactions && addReaction(showReactions, "😢")}
+            >
+              <Text style={styles.reactionOptionText}>😢</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.reactionOption}
+              onPress={() => showReactions && addReaction(showReactions, "😡")}
+            >
+              <Text style={styles.reactionOptionText}>😡</Text>
             </TouchableOpacity>
           </Animated.View>
-        </View>
-      </KeyboardAvoidingView>
-      
-      {showImagePreview && (
-        <Pressable 
-          style={styles.imagePreviewContainer}
-          onPress={() => setShowImagePreview(null)}
-        >
-          <BlurView intensity={90} style={StyleSheet.absoluteFill} tint={isDark ? 'dark' : 'light'} />
-          <TouchableOpacity 
-            style={styles.closePreviewButton}
-            onPress={() => setShowImagePreview(null)}
-          >
-            <Ionicons name="close" size={28} color="#fff" />
-          </TouchableOpacity>
-          <Image 
-            source={{ uri: showImagePreview }} 
-            style={styles.fullScreenImage}
-            resizeMode="contain"
-          />
-          <View style={styles.imagePreviewActions}>
-            <TouchableOpacity style={styles.imageAction}>
-              <Ionicons name="share-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.imageAction}>
-              <Ionicons name="download-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.imageAction}>
-              <Ionicons name="trash-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      )}
-    </SafeAreaView>
+        </BlurView>
+
+        {/* Image Preview */}
+        {showImagePreview && (
+          <Pressable style={styles.imagePreviewOverlay} onPress={() => setShowImagePreview(null)}>
+            <BlurView style={styles.imagePreviewContainer} intensity={30} tint={isDark ? "dark" : "light"}>
+              <Image source={{ uri: showImagePreview }} style={styles.fullScreenImage} resizeMode="contain" />
+            </BlurView>
+          </Pressable>
+        )}
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   )
 }
 
@@ -1063,414 +724,239 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  animatedHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingTop: 10,
+    paddingBottom: 10,
+    alignItems: "center",
+  },
+  headerContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
-  backButton: {
-    padding: 5,
-    marginRight: 5,
-  },
-  headerInfo: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: 10,
-  },
-  avatarContainer: {
-    position: "relative",
-  },
-  headerTextContainer: {
-    flex: 1,
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     marginRight: 10,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  headerOnlineIndicator: {
-    position: "absolute",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#4CAF50",
-    borderWidth: 2,
-    borderColor: "#fff",
-    bottom: 0,
-    right: 12,
-  },
-  messageAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    alignSelf: "flex-end",
-    marginBottom: 6,
-  },
-  onlineIndicator: {
-    position: "absolute",
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#4CAF50",
-    borderWidth: 1.5,
-    borderColor: "#fff",
-    bottom: 6,
-    right: 8,
-  },
-  messageAvatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    alignSelf: "flex-end",
-    marginBottom: 6,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarInitial: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  headerName: {
-    fontSize: 16,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: "600",
   },
   headerSubtitle: {
     fontSize: 12,
-    marginTop: 2,
   },
-  headerActions: {
+  chatContainer: {
+    padding: 10,
+    paddingTop: 70,
+  },
+  messageContainer: {
     flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 10,
+  },
+  myMessageContainer: {
+    justifyContent: "flex-end",
+  },
+  otherMessageContainer: {
+    justifyContent: "flex-start",
+  },
+  messageAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginRight: 10,
+    marginBottom: 5,
+  },
+  messageAvatarPlaceholder: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginRight: 10,
+    marginBottom: 5,
+    justifyContent: "center",
     alignItems: "center",
   },
-  headerButton: {
-    padding: 8,
-    marginLeft: 5,
+  avatarInitial: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#fff",
   },
-  content: {
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 3,
+    right: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4cd964",
+  },
+  messageBubbleContainer: {
+    maxWidth: "75%",
+  },
+  messageBubble: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  myMessageBubble: {
+    borderTopRightRadius: 4,
+  },
+  otherMessageBubble: {
+    borderTopLeftRadius: 4,
+  },
+  myFirstMessage: {
+    borderTopRightRadius: 20,
+  },
+  otherFirstMessage: {
+    borderTopLeftRadius: 20,
+  },
+  myLastMessage: {
+    borderBottomRightRadius: 20,
+  },
+  otherLastMessage: {
+    borderBottomLeftRadius: 20,
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  messageFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    marginTop: 3,
+  },
+  messageTime: {
+    fontSize: 12,
+    marginRight: 5,
+  },
+  inputArea: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
+  input: {
     flex: 1,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    marginRight: 10,
+  },
+  sendButton: {
+    borderRadius: 25,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scrollToBottomButton: {
+    position: "absolute",
+    bottom: 70,
+    right: 20,
+    backgroundColor: "#00000040",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
+  attachmentButton: {
+    padding: 8,
   },
-  messagesList: {
-    padding: 15,
-    paddingBottom: 20,
-  },
-  messageContainer: {
-    marginBottom: 4,
-    maxWidth: "80%",
+  attachmentOptionsContainer: {
+    position: "absolute",
+    bottom: 60,
+    left: 0,
+    right: 0,
+    padding: 10,
     flexDirection: "row",
-    alignItems: "flex-end",
+    justifyContent: "space-around",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
   },
-  myMessageContainer: {
-    alignSelf: "flex-end",
+  attachmentOption: {
+    alignItems: "center",
   },
-  otherMessageContainer: {
-    alignSelf: "flex-start",
+  attachmentOptionText: {
+    fontSize: 12,
+    marginTop: 5,
   },
-  messageBubbleContainer: {
-    position: "relative",
+  reactionOptionsOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  messageBubble: {
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    minWidth: 50,
-    maxWidth: "100%",
+  reactionOptionsContainer: {
+    backgroundColor: "#ffffff80",
+    borderRadius: 30,
+    padding: 10,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "80%",
   },
-  myMessageBubble: {
-    borderBottomRightRadius: 4,
+  reactionOption: {
+    padding: 10,
   },
-  otherMessageBubble: {
-    borderBottomLeftRadius: 4,
+  reactionOptionText: {
+    fontSize: 24,
   },
-  myFirstMessage: {
-    borderTopRightRadius: 18,
+  reactionsContainer: {
+    flexDirection: "row",
+    marginTop: 5,
   },
-  otherFirstMessage: {
-    borderTopLeftRadius: 18,
-  },
-  myLastMessage: {
-    borderBottomRightRadius: 18,
-  },
-  otherLastMessage: {
-    borderBottomLeftRadius: 18,
-  },
-  imageBubble: {
-    padding: 4,
-    backgroundColor: "transparent",
+  reaction: {
+    fontSize: 16,
+    marginRight: 5,
   },
   imageContainer: {
-    borderRadius: 14,
+    borderRadius: 12,
     overflow: "hidden",
   },
   messageImage: {
     width: 200,
-    height: 200,
-    borderRadius: 14,
+    height: 150,
   },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 22,
+  imageBubble: {
+    padding: 0,
   },
-  messageFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    marginTop: 4,
-  },
-  messageTime: {
-    fontSize: 11,
-    marginRight: 4,
-  },
-  readIndicator: {
-    marginLeft: 4,
-  },
-  reactionButton: {
-    position: "absolute",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 2,
-  },
-  myReactionButton: {
-    left: -14,
-    bottom: 10,
-  },
-  otherReactionButton: {
-    right: -14,
-    bottom: 10,
-  },
-  reactionOptions: {
-    position: "absolute",
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4,
-    zIndex: 10,
-  },
-  myReactionOptions: {
-    bottom: -50,
-    right: 0,
-  },
-  otherReactionOptions: {
-    bottom: -50,
-    left: 0,
-  },
-  reactionOption: {
-    padding: 6,
-  },
-  reactionEmoji: {
-    fontSize: 20,
-  },
-  dayContainer: {
-    alignItems: "center",
-    marginVertical: 15,
-  },
-  dayBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  dayText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-    marginTop: 100,
-  },
-  emptyImage: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
-    opacity: 0.7,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    paddingBottom: Platform.OS === "ios" ? 20 : 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  attachButton: {
-    marginRight: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  inputWrapper: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: Platform.OS === "ios" ? 8 : 4,
-  },
-  input: {
-    flex: 1,
-    maxHeight: 100,
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  emojiButton: {
-    marginLeft: 5,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 10,
-  },
-  scrollButton: {
-    position: "absolute",
-    right: 20,
-    bottom: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  typingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  typingDots: {
-    flexDirection: "row",
-    marginLeft: 5,
-  },
-  typingDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginHorizontal: 1,
-    opacity: 0.8,
-  },
-  attachmentOptionsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    padding: 15,
-    backgroundColor: "rgba(0,0,0,0.05)",
-  },
-  attachmentOption: {
-    alignItems: "center",
-    marginHorizontal: 10,
-  },
-  attachmentIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  attachmentLabel: {
-    fontSize: 12,
-  },
-  imagePreviewContainer: {
+  imagePreviewOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#00000080",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 1000,
   },
-  closePreviewButton: {
-    position: "absolute",
-    top: 40,
-    right: 20,
-    zIndex: 1001,
-    width: 40,
-    height: 40,
+  imagePreviewContainer: {
     borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    overflow: "hidden",
+    width: "90%",
+    height: "60%",
   },
   fullScreenImage: {
-    width: width * 0.9,
-    height: height * 0.7,
-    borderRadius: 10,
-  },
-  imagePreviewActions: {
-    flexDirection: "row",
-    position: "absolute",
-    bottom: 50,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 25,
-    padding: 10,
-  },
-  imageAction: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  reactionsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 4,
-    padding: 4,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    alignSelf: "flex-start",
+    width: "100%",
+    height: "100%",
   },
 })
 

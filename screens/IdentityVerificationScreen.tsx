@@ -21,7 +21,7 @@ import { useNavigation } from "@react-navigation/native"
 import * as ImagePicker from "expo-image-picker"
 import * as DocumentPicker from "expo-document-picker"
 import * as Haptics from "expo-haptics"
-import { Camera } from "expo-camera"
+import { Camera, CameraType } from "expo-camera"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import {
@@ -66,27 +66,25 @@ const IdentityVerificationScreen = () => {
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(20)).current
-  const cameraRef = useRef<Camera> (null);
+  const cameraRef = useRef<Camera>(null)
 
-// Fix the useEffect animation callback
-    useEffect(() => {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(async () => {
-        // Check camera permissions
-        const { status } = await Camera.requestCameraPermissionsAsync();
-        setHasCameraPermission(status === "granted");
-      });
-    }, []);
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync()
+      setHasCameraPermission(status === "granted")
+    })
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -94,16 +92,13 @@ const IdentityVerificationScreen = () => {
     const loadVerificationStatus = async () => {
       try {
         setIsLoading(true)
-        // Fetch actual verification status from Firebase
         const status = await checkVerificationRequirements(user.id, user.userType)
         setVerificationStatus(status)
 
-        // Pre-fill email if available
         if (user.email) {
           setEmail(user.email)
         }
 
-        // Set first incomplete method as active
         const firstIncomplete = status.requiredMethods.find((method) => !status.completedMethods.includes(method))
         if (firstIncomplete) {
           setActiveSection(firstIncomplete)
@@ -119,7 +114,6 @@ const IdentityVerificationScreen = () => {
     loadVerificationStatus()
   }, [user])
 
-  // Countdown timer for resending code
   useEffect(() => {
     if (countdown <= 0) return
 
@@ -133,7 +127,6 @@ const IdentityVerificationScreen = () => {
   const handleRequestCode = async (method: "email" | "phone") => {
     if (!user) return
 
-    // Validate input
     const destination = method === "email" ? email : phone
     if (!destination) {
       Alert.alert("Error", `Please enter your ${method} first`)
@@ -162,7 +155,7 @@ const IdentityVerificationScreen = () => {
       if (success) {
         setCurrentMethod(method)
         setCodeSent(true)
-        setCountdown(60) // 60 seconds countdown for resend
+        setCountdown(60)
         Alert.alert("Success", `Verification code sent to your ${method}`)
       } else {
         Alert.alert("Error", `Failed to send verification code to your ${method}`)
@@ -178,7 +171,6 @@ const IdentityVerificationScreen = () => {
   const handleVerifyCode = async () => {
     if (!user || !currentMethod) return
 
-    // Validate code
     if (!verificationCode || verificationCode.length < 4) {
       Alert.alert("Error", "Please enter a valid verification code")
       return
@@ -190,7 +182,6 @@ const IdentityVerificationScreen = () => {
 
       const success = await verifyCode(user.id, currentMethod as "email" | "phone", verificationCode)
       if (success) {
-        // Update local state
         setVerificationStatus((prev) => ({
           ...prev,
           completedMethods: [...prev.completedMethods, currentMethod],
@@ -200,7 +191,6 @@ const IdentityVerificationScreen = () => {
         setVerificationCode("")
         setCurrentMethod(null)
 
-        // Find next incomplete method
         const nextIncomplete = verificationStatus.requiredMethods.find(
           (method) => !verificationStatus.completedMethods.includes(method) && method !== currentMethod,
         )
@@ -226,14 +216,13 @@ const IdentityVerificationScreen = () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
-      // For ID and selfie, offer camera option
       if (type === "idFront" || type === "idBack" || type === "selfie") {
         Alert.alert("Choose Image Source", "Where would you like to get the image from?", [
           {
             text: "Camera",
             onPress: () => {
               if (hasCameraPermission) {
-                setCameraType(type as any)
+                setCameraType(type)
                 setShowCamera(true)
               } else {
                 Alert.alert("Permission Required", "Camera permission is required to take photos")
@@ -250,7 +239,6 @@ const IdentityVerificationScreen = () => {
           },
         ])
       } else {
-        // For address proof, offer document picker too
         Alert.alert("Choose Document Source", "Where would you like to get the document from?", [
           {
             text: "Gallery",
@@ -281,7 +269,7 @@ const IdentityVerificationScreen = () => {
         quality: 0.8,
       })
 
-      if (!result.canceled) {
+      if (!result.canceled && result.assets) {
         const uri = result.assets[0].uri
         setImageForType(type, uri)
       }
@@ -298,8 +286,8 @@ const IdentityVerificationScreen = () => {
         copyToCacheDirectory: true,
       })
 
-      if (result.type === "success") {
-        setAddressProofImage(result.uri)
+      if (result.type === "success" && result.assets) {
+        setAddressProofImage(result.assets[0].uri)
       }
     } catch (error) {
       console.error("Error picking document:", error)
@@ -372,43 +360,33 @@ const IdentityVerificationScreen = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
         Alert.alert("Success", "Document uploaded successfully")
 
-        // If both ID front and back are uploaded, mark ID as verified
         if (type === "idFront" || type === "idBack") {
-          if (idFrontImage && idBackImage) {
-            // Update local state
-            if (!verificationStatus.completedMethods.includes("id")) {
-              setVerificationStatus((prev) => ({
-                ...prev,
-                completedMethods: [...prev.completedMethods, "id"],
-              }))
-
-              // Find next incomplete method
-              const nextIncomplete = verificationStatus.requiredMethods.find(
-                (method) => !verificationStatus.completedMethods.includes(method) && method !== "id",
-              )
-              if (nextIncomplete) {
-                setActiveSection(nextIncomplete)
-              }
-            }
-          }
-        }
-
-        // If address proof is uploaded, mark address as verified
-        if (type === "addressProof") {
-          // Update local state
-          if (!verificationStatus.completedMethods.includes("address")) {
+          if (idFrontImage && idBackImage && !verificationStatus.completedMethods.includes("id")) {
             setVerificationStatus((prev) => ({
               ...prev,
-              completedMethods: [...prev.completedMethods, "address"],
+              completedMethods: [...prev.completedMethods, "id"],
             }))
 
-            // Find next incomplete method
             const nextIncomplete = verificationStatus.requiredMethods.find(
-              (method) => !verificationStatus.completedMethods.includes(method) && method !== "address",
+              (method) => !verificationStatus.completedMethods.includes(method) && method !== "id",
             )
             if (nextIncomplete) {
               setActiveSection(nextIncomplete)
             }
+          }
+        }
+
+        if (type === "addressProof" && !verificationStatus.completedMethods.includes("address")) {
+          setVerificationStatus((prev) => ({
+            ...prev,
+            completedMethods: [...prev.completedMethods, "address"],
+          }))
+
+          const nextIncomplete = verificationStatus.requiredMethods.find(
+            (method) => !verificationStatus.completedMethods.includes(method) && method !== "address",
+          )
+          if (nextIncomplete) {
+            setActiveSection(nextIncomplete)
           }
         }
       } else {
@@ -846,18 +824,13 @@ const IdentityVerificationScreen = () => {
     )
   }
 
-  // Camera component
   if (showCamera) {
     return (
       <View style={styles.cameraContainer}>
         <Camera
-      ref={cameraRef}
-      style={styles.camera}
-      type={
-        cameraType === "selfie" 
-          ? Camera.Constants.Type.front 
-          : Camera.Constants.Type.back
-  }
+          ref={cameraRef}
+          style={styles.camera}
+          type={cameraType === "selfie" ? CameraType.front : CameraType.back}
         >
           <View style={styles.cameraOverlay}>
             <View style={styles.cameraHeader}>

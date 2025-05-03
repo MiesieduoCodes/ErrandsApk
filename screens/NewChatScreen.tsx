@@ -29,14 +29,6 @@ import { userService } from "../services/database"
 
 const { width } = Dimensions.get("window")
 
-// Update the User type definition in your "../services/search" file to include:
-// interface User {
-//   // ... other properties
-//   lastActive?: string;
-//   tags?: string[];
-//   userType: 'runner' | 'seller' | 'helper';
-// }
-
 const NewChatScreen = () => {
   const { user } = useAuth()
   const { theme, isDark } = useTheme()
@@ -195,17 +187,13 @@ const NewChatScreen = () => {
             <View
               style={[
                 styles.userTypeBadge,
-                {
-                  backgroundColor: item.userType === "helper" ? theme.primary + "20" : theme.accent + "20",
-                },
+                { backgroundColor: theme.accent + "20" },
               ]}
             >
               <Text
                 style={[
                   styles.userTypeText,
-                  {
-                    color: item.userType === "helper" ? theme.primary : theme.accent,
-                  },
+                  { color: theme.accent },
                 ]}
               >
                 {(item.userType ?? "unknown").charAt(0).toUpperCase() + (item.userType ?? "unknown").slice(1)}

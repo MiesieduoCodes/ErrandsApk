@@ -14,6 +14,8 @@ export interface User {
   };
   rating?: number;
   distance?: number;
+  lastActive?: string;
+  tags?: string[];
 }
 
 export interface Product {
