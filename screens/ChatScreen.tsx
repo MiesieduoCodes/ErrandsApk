@@ -638,7 +638,7 @@ const ChatScreen = () => {
 
       if (!result.canceled) {
         return {
-          uri: result.assets[0].uri,
+          uri: result.assets ? result.assets[0].uri : "",
           type: "image",
         }
       }
@@ -681,21 +681,21 @@ const ChatScreen = () => {
       const result = await DocumentPicker.getDocumentAsync({
         type: "*/*",
         copyToCacheDirectory: true,
-      })
-
-      if (!result.canceled) {
+      });
+  
+      if (result.type === "success") {
         return {
-          uri: result.uri,
-          name: result.assets[0]?.name || "unknown",
+          uri: result.assets[0].uri,
+          name: result.assets[0].name,
           type: "file",
-        }
+        };
       }
-      return null
+      return null;
     } catch (error) {
-      console.error("Error picking document:", error)
-      return null
+      console.error("Error picking document:", error);
+      return null;
     }
-  }
+  };
 
   const pickLocation = async () => {
     try {
