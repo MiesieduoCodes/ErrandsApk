@@ -53,6 +53,18 @@ const MainNavigator = () => {
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null)
   const [isCheckingFirstLaunch, setIsCheckingFirstLaunch] = useState(true)
   const [currentNavigator, setCurrentNavigator] = useState<React.ComponentType<any> | null>(null)
+  const [isNavigatorReady, setIsNavigatorReady] = useState(false)
+
+  // Add this useEffect to ensure navigator is ready
+  useEffect(() => {
+    const prepareNavigator = async () => {
+      // Wait a moment to ensure JS runtime is fully initialized
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      setIsNavigatorReady(true)
+    }
+
+    prepareNavigator()
+  }, [])
 
   // This effect runs when the component mounts to check if it's the first launch
   useEffect(() => {
@@ -192,7 +204,7 @@ const MainNavigator = () => {
     }
   }
 
-  if (authLoading || isCheckingFirstLaunch) {
+  if (authLoading || isCheckingFirstLaunch || !isNavigatorReady) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={theme.primary} />

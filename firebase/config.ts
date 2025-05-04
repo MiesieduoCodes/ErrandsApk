@@ -1,9 +1,12 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { initializeAuth, getAuth, Auth } from "firebase/auth";
-import { getDatabase, Database } from "firebase/database";
-import { getFirestore, enableIndexedDbPersistence, Firestore } from "firebase/firestore";
-import { getStorage, FirebaseStorage } from "firebase/storage";
+// firebase.ts (or firebase.js)
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import { getDatabase } from "firebase/database";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 
+// Your Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAQLHTMNHexjbSJXsATVICgNSKVu1o4F8A",
   authDomain: "boltlikeapp.firebaseapp.com",
@@ -15,30 +18,46 @@ const firebaseConfig = {
   measurementId: "G-DLM5G0NPFZ",
 };
 
-// Initialize Firebase with type
-const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase
+let app;
+let auth;
+let database;
+let db;
+let storage;
 
-// Initialize Auth with type
-const auth: Auth = getAuth(app);
+try {
+  // Initialize Firebase App
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Realtime Database with type and offline persistence
-const database: Database = getDatabase(app);
-// Note: RTDB offline persistence is not supported in the Web SDK.
-console.warn("RTDB offline persistence is not supported in the Web SDK.");
-
-// Initialize Firestore with type and offline persistence
-const db: Firestore = getFirestore(app);
-enableIndexedDbPersistence(db)
-  .then(() => console.log("Firestore persistence enabled"))
-  .catch((err: { code: string }) => {
-    if (err.code === "failed-precondition") {
-      console.warn("Firestore persistence already enabled in another tab.");
-    } else if (err.code === "unimplemented") {
-      console.warn("This browser doesn't support Firestore offline persistence.");
-    }
+  // Initialize Auth with AsyncStorage persistence
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
   });
 
-// Initialize Storage with type
-const storage: FirebaseStorage = getStorage(app);
+  // Initialize Realtime Database
+  database = getDatabase(app);
+  
+  // Initialize Firestore with offline persistence
+  db = getFirestore(app);
+  enableIndexedDbPersistence(db)
+    .then(() => console.log("Firestore offline persistence enabled"))
+    .catch((err) => {
+      if (err.code === "failed-precondition") {
+        console.warn(
+          "Firestore persistence already enabled in another tab."
+        );
+      } else if (err.code === "unimplemented") {
+        console.warn(
+          "Current browser does not support all features required for Firestore persistence"
+        );
+      }
+    });
 
+  // Initialize Cloud Storage
+  storage = getStorage(app);
+} catch (error) {
+  console.error("Firebase initialization error", error);
+}
+
+// Export initialized services
 export { app, auth, database, db, storage };

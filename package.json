@@ -70,6 +70,7 @@
     "expo-linking": "latest",
     "expo-local-authentication": "latest",
     "expo-location": "latest",
+    "expo-module-scripts": "^4.1.6",
     "expo-notifications": "latest",
     "expo-secure-store": "latest",
     "expo-status-bar": "latest",

@@ -1,6 +1,6 @@
 module.exports = {
-    name: "Airands App",
-    slug: "airands-app",
+    name: "Errands App",
+    slug: "errands-app",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/logo.png",
