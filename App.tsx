@@ -63,7 +63,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null)
   const [isConnected, setIsConnected] = useState(true)
-  const [navigationError, setNavigationError] = useState(null)
+  const [navigationError, setNavigationError] = useState<string | null>(null)
 
   useEffect(() => {
     // Check if it's the first time the app is launched

@@ -7,6 +7,7 @@ import { useTheme } from "../context/ThemeContext"
 import { useAuth } from "../context/AuthContext"
 import * as ImagePicker from "expo-image-picker"
 import { storage } from "../firebase/config"
+import type { FirebaseStorage } from "firebase/storage"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import type { StackNavigationProp } from "@react-navigation/stack"
 
@@ -194,7 +195,7 @@ const SettingsScreen = () => {
       try {
         const uri = result.assets[0].uri
         const response = await fetch(uri)
-        const blob = await response.blob()
+        const storageRef = ref(storage as FirebaseStorage, `profile_images/${user.uid}`)
         const storageRef = ref(storage, `profile_images/${user.uid}`)
         
         await uploadBytes(storageRef, blob)
