@@ -75,7 +75,7 @@ const MainTabNavigator = () => {
       )
     } else if (user.userType === 'runner') {
       userRoutes.push(
-        { key: 'home', title: 'Home', icon: 'home' },
+        { key: 'runner', title: 'Home', icon: 'home' },
         { key: 'earnings', title: 'Earnings', icon: 'wallet' },
         { key: 'activity', title: 'Activity', icon: 'time' },
         { key: 'messages', title: 'Messages', icon: 'chatbubbles', badge: unreadMessages },
@@ -129,6 +129,7 @@ const MainTabNavigator = () => {
     orders: OrdersScreen,
     
     // Runner scenes
+    runner: RunnerHomeScreen,
     earnings: EarningsScreen,
     activity: ActivityScreen,
   })

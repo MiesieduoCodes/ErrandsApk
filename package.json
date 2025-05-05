@@ -1,12 +1,13 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
-  "private": true,
+  "name": "airands",
+  "license": "0BSD",
+  "version": "1.0.0",
+  "main": "index.ts",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
   },
   "dependencies": {
     "@expo/vector-icons": "latest",
@@ -49,19 +50,21 @@
     "@react-navigation/native": "latest",
     "@react-navigation/native-stack": "latest",
     "@react-navigation/stack": "^7.2.10",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
-    "expo": "latest",
+    "expo": "~53.0.7",
     "expo-auth-session": "latest",
     "expo-av": "^15.0.2",
     "expo-blur": "~14.0.3",
     "expo-camera": "~16.1.6",
     "expo-constants": "latest",
-    "expo-dev-client": "~5.0.20",
+    "expo-dev-client": "~5.1.8",
     "expo-device": "latest",
     "expo-document-picker": "^13.1.5",
     "expo-font": "latest",
@@ -82,11 +85,9 @@
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
     "next-themes": "^0.4.4",
-    "react": "^18.3.1",
-    "react-day-picker": "8.10.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.54.1",
-    "react-native": "latest",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-native": "0.79.2",
     "react-native-maps": "^1.18.0",
     "react-native-pager-view": "^6.7.1",
     "react-native-safe-area-context": "^4.12.0",
@@ -103,13 +104,11 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@react-native-community/cli": "latest",
     "@types/firebase": "^2.4.32",
     "@types/node": "^22",
-    "@types/react": "~18.3.12",
-    "@types/react-dom": "~18.3.1",
-    "babel-plugin-module-resolver": "^5.0.2",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5"
-  }
+    "babel-plugin-module-resolver": "^5.0.2"
+  },
+  "private": true
 }

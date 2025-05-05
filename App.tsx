@@ -23,7 +23,7 @@ import SearchScreen from "./screens/SearchScreen"
 import ErrandsScreen from "./screens/ErrandsScreen" // Ensure the file name is correct
 import AboutScreen from "./screens/About"
 
-import SettingsScreen from "./screens/SettingsScreen"
+// import SettingsScreen from "./screens/SettingsScreen"
 import Notification from "./screens/NotificationsScreen"
 import IdentityVerificationScreen from "./screens/IdentityVerificationScreen"
 import Payment from "./screens/PaymentScreen"
@@ -165,7 +165,7 @@ export default function App() {
               <Stack.Screen name="NewChat" component={NewChatScreen} />
               <Stack.Screen name="Notification" component={Notification} />
               <Stack.Screen name="SwitchRole" component={SwitchRole} />
-              <Stack.Screen name="Settings" component={SettingsScreen} />
+              {/* <Stack.Screen name="Settings" component={SettingsScreen} /> */}
               <Stack.Screen name="Nearby" component={NearbyScreen} />
               <Stack.Screen name="TermsAndPrivacy" component={TermsAndPrivacyScreen} />
               <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
