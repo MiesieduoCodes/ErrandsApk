@@ -1,6 +1,6 @@
-// firebase.ts (or firebase.js)
+// firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeAuth } from "firebase/auth";
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -30,7 +30,9 @@ try {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
   // Initialize Auth with AsyncStorage persistence
-  auth = initializeAuth(app);
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+  });
 
   // Initialize Realtime Database
   database = getDatabase(app);
@@ -57,5 +59,5 @@ try {
   console.error("Firebase initialization error", error);
 }
 
-// Export initialized services
+// Export initialized services with proper typing
 export { app, auth, database, db, storage };
