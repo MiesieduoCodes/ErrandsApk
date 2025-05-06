@@ -17,14 +17,13 @@ import AuthScreen from "./screens/AuthScreen"
 import ErrandDetailsScreen from "./screens/ErrandDetailsScreen"
 import NewChatScreen from "./screens/NewChatScreen"
 import ChatScreen from "./screens/ChatScreen"
-import NearbyScreen from "./screens/NearbyScreen" // Ensure the file name is correct
-import HelpCenterScreen from "./screens/HelpCenterScreen" // Ensure the file name and path are correct
+import NearbyScreen from "./screens/NearbyScreen"
+import HelpCenterScreen from "./screens/HelpCenterScreen"
 import ActivityScreen from "./screens/ActivityScreen"
 import SearchScreen from "./screens/SearchScreen"
-import ErrandsScreen from "./screens/ErrandsScreen" // Ensure the file name is correct
+import ErrandsScreen from "./screens/ErrandsScreen"
 import AboutScreen from "./screens/About"
 
-// import SettingsScreen from "./screens/SettingsScreen"
 import Notification from "./screens/NotificationsScreen"
 import IdentityVerificationScreen from "./screens/IdentityVerificationScreen"
 import Payment from "./screens/PaymentScreen"
@@ -37,11 +36,13 @@ import PasswordResetScreen from "./screens/PasswordResetScreen"
 import MainTabNavigator from "./navigation/MainTabNavigator"
 import ChatListScreen from "./screens/ChatListScreen"
 import TermsAndPrivacyScreen from "./screens/TermsAndPrivacy"
+
 // Components
 import OfflineIndicator from "./components/OfflineIndicator"
 
 // Context
 import { ThemeProvider } from "./context/ThemeContext"
+import { FirebaseProvider } from "./context/FirebaseContext"
 import { AuthProvider } from "./context/AuthContext"
 
 // Services
@@ -150,44 +151,45 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <ThemeProvider>
-          <NavigationContainer
-            onReady={() => console.log("Navigation container is ready")}
-            onStateChange={() => console.log("Navigation state changed")}
-            onUnhandledAction={(action) => console.log("Unhandled action:", action)}
-            fallback={<SplashScreen />}
-          >
-            <OfflineIndicator />
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              {isFirstLaunch && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
-              <Stack.Screen name="AuthScreen" component={AuthScreen} />
-              <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
-              <Stack.Screen name="Main" component={MainTabNavigator} />
-              <Stack.Screen name="Payment" component={Payment} />
-              <Stack.Screen name="ContactSupport" component={ContactSupport} />
-              <Stack.Screen name="Chat" component={ChatScreen} />
-              <Stack.Screen name="About" component={AboutScreen} />
-              <Stack.Screen name="BusinessHours" component={BusinessHoursScreen} />
-              <Stack.Screen name="BusinessLocationScreen" component={BusinessLocationScreen} />
-              <Stack.Screen name="ChatList" component={ChatListScreen} />
-              <Stack.Screen name="NewChat" component={NewChatScreen} />
-              <Stack.Screen name="Notification" component={Notification} />
-              <Stack.Screen name="SwitchRole" component={SwitchRole} />
-              {/* <Stack.Screen name="Settings" component={SettingsScreen} /> */}
-              <Stack.Screen name="Nearby" component={NearbyScreen} />
-              <Stack.Screen name="TermsAndPrivacy" component={TermsAndPrivacyScreen} />
-              <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
-              <Stack.Screen name="Errands" component={ErrandsScreen} />
-              <Stack.Screen name="Activity" component={ActivityScreen} />
-              <Stack.Screen name="Search" component={SearchScreen} />
-              <Stack.Screen name="Wallet" component={WalletScreen} />
-              <Stack.Screen name="ErrandDetails" component={ErrandDetailsScreen} />
-              <Stack.Screen name="IdentityVerification" component={IdentityVerificationScreen} />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </ThemeProvider>
-      </AuthProvider>
+      <FirebaseProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <NavigationContainer
+              onReady={() => console.log("Navigation container is ready")}
+              onStateChange={() => console.log("Navigation state changed")}
+              onUnhandledAction={(action) => console.log("Unhandled action:", action)}
+              fallback={<SplashScreen />}
+            >
+              <OfflineIndicator />
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                {isFirstLaunch && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
+                <Stack.Screen name="AuthScreen" component={AuthScreen} />
+                <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
+                <Stack.Screen name="Main" component={MainTabNavigator} />
+                <Stack.Screen name="Payment" component={Payment} />
+                <Stack.Screen name="ContactSupport" component={ContactSupport} />
+                <Stack.Screen name="Chat" component={ChatScreen} />
+                <Stack.Screen name="About" component={AboutScreen} />
+                <Stack.Screen name="BusinessHours" component={BusinessHoursScreen} />
+                <Stack.Screen name="BusinessLocationScreen" component={BusinessLocationScreen} />
+                <Stack.Screen name="ChatList" component={ChatListScreen} />
+                <Stack.Screen name="NewChat" component={NewChatScreen} />
+                <Stack.Screen name="Notification" component={Notification} />
+                <Stack.Screen name="SwitchRole" component={SwitchRole} />
+                <Stack.Screen name="Nearby" component={NearbyScreen} />
+                <Stack.Screen name="TermsAndPrivacy" component={TermsAndPrivacyScreen} />
+                <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
+                <Stack.Screen name="Errands" component={ErrandsScreen} />
+                <Stack.Screen name="Activity" component={ActivityScreen} />
+                <Stack.Screen name="Search" component={SearchScreen} />
+                <Stack.Screen name="Wallet" component={WalletScreen} />
+                <Stack.Screen name="ErrandDetails" component={ErrandDetailsScreen} />
+                <Stack.Screen name="IdentityVerification" component={IdentityVerificationScreen} />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </ThemeProvider>
+        </AuthProvider>
+      </FirebaseProvider>
     </SafeAreaProvider>
   )
 }

@@ -3,7 +3,6 @@
 import type React from "react"
 
 import { createContext, useState, useContext, useEffect } from "react"
-import { auth, db } from "../firebase/config"
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -15,15 +14,18 @@ import {
 } from "firebase/auth"
 import { doc, setDoc } from "firebase/firestore"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useFirebase } from "./FirebaseContext"
 
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, displayName: string) => Promise<void>
+  login: (email: string, password: string, userType?: string) => Promise<void>
+  register: (email: string, password: string, displayName: string, userType?: string) => Promise<void>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   updateUserProfile: (displayName: string, photoURL?: string) => Promise<void>
+  userType: string | null
+  setUserType: (type: string) => void
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -34,19 +36,39 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
   resetPassword: async () => {},
   updateUserProfile: async () => {},
+  userType: null,
+  setUserType: () => {},
 })
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isFirebaseReady, auth, db } = useFirebase()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [userType, setUserType] = useState<string | null>(null)
 
+  // Initialize auth state
   useEffect(() => {
-    if (!auth) {
-      console.error("Auth is not initialized")
-      setIsLoading(false)
-      return () => {}
+    if (!isFirebaseReady) {
+      console.log("Firebase is not ready yet, waiting...")
+      return
     }
 
+    console.log("Firebase is ready, setting up auth listener")
+
+    // Get stored user type
+    const getStoredUserType = async () => {
+      try {
+        const storedUserType = await AsyncStorage.getItem("userType")
+        if (storedUserType) {
+          setUserType(storedUserType)
+        }
+      } catch (error) {
+        console.error("Error getting stored user type:", error)
+      }
+    }
+    getStoredUserType()
+
+    // Set up auth state listener
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user)
@@ -74,7 +96,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false)
     })
 
-    if (!auth) {
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
+  }, [isFirebaseReady, auth])
+
+  // Fallback for when Firebase auth is not available
+  useEffect(() => {
+    if (!isFirebaseReady) {
       const getUserFromStorage = async () => {
         try {
           const userData = await AsyncStorage.getItem("user")
@@ -88,26 +117,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       getUserFromStorage()
     }
+  }, [isFirebaseReady])
 
-    return () => {
-      if (unsubscribe) unsubscribe()
+  const handleSetUserType = async (type: string) => {
+    setUserType(type)
+    try {
+      await AsyncStorage.setItem("userType", type)
+    } catch (error) {
+      console.error("Error storing user type:", error)
     }
-  }, [])
+  }
 
-  const login = async (email: string, password: string) => {
-    if (!auth) throw new Error("Auth is not initialized")
+  const login = async (email: string, password: string, userType?: string) => {
+    if (!isFirebaseReady || !auth) {
+      throw new Error("Firebase auth is not initialized")
+    }
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       setUser(userCredential.user)
+
+      // Set user type if provided
+      if (userType) {
+        await handleSetUserType(userType)
+      }
     } catch (error: any) {
       console.error("Login error:", error.message)
       throw error
     }
   }
 
-  const register = async (email: string, password: string, displayName: string) => {
-    if (!auth || !db) throw new Error("Firebase services are not initialized")
+  const register = async (email: string, password: string, displayName: string, userType?: string) => {
+    if (!isFirebaseReady || !auth || !db) {
+      throw new Error("Firebase services are not initialized")
+    }
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
@@ -115,12 +158,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       await updateProfile(user, { displayName })
 
+      const userTypeToUse = userType || "buyer"
+
       await setDoc(doc(db, "users", user.uid), {
         email,
         displayName,
         createdAt: new Date().toISOString(),
-        userType: "buyer",
+        userType: userTypeToUse,
       })
+
+      // Set user type in state and storage
+      await handleSetUserType(userTypeToUse)
 
       setUser(user)
     } catch (error: any) {
@@ -130,11 +178,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = async () => {
-    if (!auth) throw new Error("Auth is not initialized")
+    if (!isFirebaseReady || !auth) {
+      throw new Error("Firebase auth is not initialized")
+    }
 
     try {
       await signOut(auth)
       setUser(null)
+      setUserType(null)
+      await AsyncStorage.removeItem("userType")
     } catch (error: any) {
       console.error("Logout error:", error.message)
       throw error
@@ -142,7 +194,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const resetPassword = async (email: string) => {
-    if (!auth) throw new Error("Auth is not initialized")
+    if (!isFirebaseReady || !auth) {
+      throw new Error("Firebase auth is not initialized")
+    }
 
     try {
       await sendPasswordResetEmail(auth, email)
@@ -153,7 +207,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const updateUserProfile = async (displayName: string, photoURL?: string) => {
-    if (!auth?.currentUser) throw new Error("User is not authenticated")
+    if (!isFirebaseReady || !auth?.currentUser) {
+      throw new Error("User is not authenticated")
+    }
 
     try {
       await updateProfile(auth.currentUser, { displayName, photoURL })
@@ -187,6 +243,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         resetPassword,
         updateUserProfile,
+        userType,
+        setUserType: handleSetUserType,
       }}
     >
       {children}

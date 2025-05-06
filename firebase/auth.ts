@@ -1,25 +1,32 @@
-// auth.ts
-import { 
-  sendPasswordResetEmail, 
-  signOut, 
-  type User,
-  type Auth 
-} from "firebase/auth";
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc,
-  type Firestore 
-} from "firebase/firestore";
-import { auth, db } from "./config";
+// Import auth and other Firebase services here
+import { getAuth, sendPasswordResetEmail, signOut, type User, type Auth } from "firebase/auth"
+import { getFirestore, doc, getDoc, setDoc, updateDoc, type Firestore } from "firebase/firestore"
+import { getStorage } from "firebase/storage"
+import { getDatabase } from "firebase/database"
+import { app } from "./config"
+
+// Initialize Firebase services
+let auth, db, storage, database
+
+// Use try-catch to handle initialization errors
+try {
+  auth = getAuth(app)
+  db = getFirestore(app)
+  storage = getStorage(app)
+  database = getDatabase(app)
+  console.log("Firebase services initialized successfully")
+} catch (error) {
+  console.error("Error initializing Firebase services:", error)
+}
 
 // Explicitly type the imported auth and db
-const typedAuth: Auth = auth;
-const typedDb: Firestore = db;
+const typedAuth: Auth = auth
+const typedDb: Firestore = db
+
+export { auth, db, storage, database }
 
 // User role types
-export type UserRole = "buyer" | "runner" | "seller" | "admin";
+export type UserRole = "buyer" | "runner" | "seller" | "admin"
 
 // Permission types
 export type Permission =
@@ -28,7 +35,7 @@ export type Permission =
   | "manage_products"
   | "view_analytics"
   | "manage_users"
-  | "access_admin";
+  | "access_admin"
 
 // Role definitions with associated permissions
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -36,71 +43,71 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   runner: ["run_errand"],
   seller: ["manage_products"],
   admin: ["create_errand", "run_errand", "manage_products", "view_analytics", "manage_users", "access_admin"],
-};
+}
 
 // Check if user has a specific permission
 export const hasPermission = async (user: User, permission: Permission): Promise<boolean> => {
-  if (!user) return false;
+  if (!user) return false
 
   try {
-    const userDoc = await getDoc(doc(typedDb, "users", user.uid));
-    if (!userDoc.exists()) return false;
+    const userDoc = await getDoc(doc(typedDb, "users", user.uid))
+    if (!userDoc.exists()) return false
 
-    const userData = userDoc.data();
-    const userRole = userData.userType as UserRole;
+    const userData = userDoc.data()
+    const userRole = userData.userType as UserRole
 
-    return ROLE_PERMISSIONS[userRole]?.includes(permission) || false;
+    return ROLE_PERMISSIONS[userRole]?.includes(permission) || false
   } catch (error) {
-    console.error("Error checking permission:", error);
-    return false;
+    console.error("Error checking permission:", error)
+    return false
   }
-};
+}
 
 // Set user role
 export const setUserRole = async (userId: string, role: UserRole): Promise<void> => {
   try {
     await updateDoc(doc(typedDb, "users", userId), {
       userType: role,
-    });
+    })
   } catch (error) {
-    console.error("Error setting user role:", error);
-    throw error;
+    console.error("Error setting user role:", error)
+    throw error
   }
-};
+}
 
 // Reset password
 export const resetPassword = async (email: string): Promise<void> => {
   try {
-    await sendPasswordResetEmail(typedAuth, email);
+    await sendPasswordResetEmail(typedAuth, email)
   } catch (error) {
-    console.error("Error sending password reset email:", error);
-    throw error;
+    console.error("Error sending password reset email:", error)
+    throw error
   }
-};
+}
 
 // Sign out
 export const signOutUser = async (): Promise<void> => {
   try {
-    await signOut(typedAuth);
+    await signOut(typedAuth)
   } catch (error) {
-    console.error("Error signing out:", error);
-    throw error;
+    console.error("Error signing out:", error)
+    throw error
   }
-};
+}
 
 // Get user role
 export const getUserRole = async (userId: string): Promise<UserRole | null> => {
   try {
-    const userDoc = await getDoc(doc(typedDb, "users", userId));
-    if (!userDoc.exists()) return null;
+    const userDoc = await getDoc(doc(typedDb, "users", userId))
+    if (!userDoc.exists()) return null
 
-    const userData = userDoc.data();
-    return userData.userType as UserRole;
+    const userData = userDoc.data()
+    return userData.userType as UserRole
   } catch (error) {
-    console.error("Error getting user role:", error);
-    return null;
+    console.error("Error getting user role:", error)
+    return null
   }
-};
+}
 
 // Create or update role in Firestore
 export const syncRolePermissions = async (): Promise<void> => {
@@ -115,10 +122,10 @@ export const syncRolePermissions = async (): Promise<void> => {
           updatedAt: new Date(),
         },
         { merge: true },
-      );
+      )
     }
   } catch (error) {
-    console.error("Error syncing role permissions:", error);
-    throw error;
+    console.error("Error syncing role permissions:", error)
+    throw error
   }
-};
+}

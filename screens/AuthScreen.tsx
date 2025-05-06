@@ -12,29 +12,33 @@ import {
   Platform,
   Image,
   Alert,
-  ActivityIndicator,
   Animated,
   Easing,
-  Dimensions
+  Dimensions,
+  ActivityIndicator,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
-import { useAuth, type UserType } from "../context/AuthContext"
+import { useAuth } from "../context/AuthContext"
+import { useFirebase } from "../context/FirebaseContext"
 import { useTheme } from "../context/ThemeContext"
 import * as Google from "expo-auth-session/providers/google"
 import * as WebBrowser from "expo-web-browser"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import type { RootStackParamList } from "../types"
 
 WebBrowser.maybeCompleteAuthSession()
 
 const { width } = Dimensions.get("window")
 
 type AuthScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList>
+  navigation: NativeStackNavigationProp<any>
 }
 
+// Define UserType type
+type UserType = "buyer" | "runner" | "seller"
+
 const AuthScreen = ({ navigation }: AuthScreenProps) => {
+  const { isFirebaseReady } = useFirebase()
   const { login, register, user } = useAuth()
   const { theme, isDark } = useTheme()
   const [isSignUp, setIsSignUp] = useState(false)
@@ -85,9 +89,9 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start()
-      
+
       // Progress bar animation
       Animated.timing(progressAnim, {
         toValue: 1,
@@ -118,18 +122,23 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   }, [user, navigation])
 
   const handleAuth = async () => {
+    if (!isFirebaseReady) {
+      Alert.alert("Please wait", "The app is still initializing. Please try again in a moment.")
+      return
+    }
+
     // Button press animation
     Animated.sequence([
       Animated.timing(buttonScale, {
         toValue: 0.95,
         duration: 100,
-        useNativeDriver: true
+        useNativeDriver: true,
       }),
       Animated.timing(buttonScale, {
         toValue: 1,
         duration: 100,
-        useNativeDriver: true
-      })
+        useNativeDriver: true,
+      }),
     ]).start()
 
     if (isSignUp && (!name || !email || !phone || !password)) {
@@ -176,7 +185,9 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   const handleGoogleSignIn = async (idToken: string) => {
     try {
       setIsLoading(true)
-      await signInWithGoogle(idToken, userType)
+      // This is a placeholder - actual implementation would use Firebase
+      console.log("Google sign in with token:", idToken, "and user type:", userType)
+      Alert.alert("Not Implemented", "Google sign-in is not fully implemented yet.")
     } catch (error) {
       console.error("Google sign in error:", error)
       Alert.alert("Error", "Google sign in failed. Please try again.")
@@ -186,6 +197,11 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   }
 
   const handleGoogleAuth = async () => {
+    if (!isFirebaseReady) {
+      Alert.alert("Please wait", "The app is still initializing. Please try again in a moment.")
+      return
+    }
+
     try {
       await promptAsync()
     } catch (error) {
@@ -198,6 +214,16 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
     navigation.navigate("PasswordReset")
   }
 
+  // Show loading indicator if Firebase is not ready
+  if (!isFirebaseReady) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={[styles.loadingText, { color: theme.text, marginTop: 20 }]}>Initializing app...</Text>
+      </View>
+    )
+  }
+
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
@@ -208,17 +234,19 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
             style={[
               styles.loadingLogo,
               {
-                transform: [{
-                  scale: dotAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 1.1],
-                  })
-                }]
-              }
+                transform: [
+                  {
+                    scale: dotAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.1],
+                    }),
+                  },
+                ],
+              },
             ]}
             resizeMode="contain"
           />
-          
+
           {/* Animated Dots */}
           <View style={styles.dotsContainer}>
             {[...Array(3)].map((_, i) => (
@@ -226,51 +254,53 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                 key={i}
                 style={[
                   styles.loadingDot,
-                  { 
+                  {
                     backgroundColor: theme.primary,
-                    transform: [{
-                      translateY: dotAnimation.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0, -8, 0],
-                      })
-                    }],
+                    transform: [
+                      {
+                        translateY: dotAnimation.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [0, -8, 0],
+                        }),
+                      },
+                    ],
                     opacity: dotAnimation.interpolate({
                       inputRange: [0, 0.3, 0.6, 1],
                       outputRange: [0.3, 1, 0.3, 0.3],
                     }),
-                  }
+                  },
                 ]}
               />
             ))}
           </View>
-          
+
           {/* Loading Text */}
           <Text style={[styles.loadingText, { color: theme.text }]}>
-            {userType === 'buyer' ? 'Preparing buyer experience...' :
-             userType === 'seller' ? 'Setting up seller dashboard...' :
-             'Getting runner tools ready...'}
+            {userType === "buyer"
+              ? "Preparing buyer experience..."
+              : userType === "seller"
+                ? "Setting up seller dashboard..."
+                : "Getting runner tools ready..."}
           </Text>
-          
+
           {/* Progress Bar */}
           <View style={[styles.progressBarContainer, { backgroundColor: theme.border }]}>
-            <Animated.View 
+            <Animated.View
               style={[
                 styles.progressBar,
-                { 
+                {
                   backgroundColor: theme.primary,
                   width: progressAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  })
-                }
+                    outputRange: ["0%", "100%"],
+                  }),
+                },
               ]}
             />
           </View>
-          
+
           {/* Hint Text */}
-          <Text style={[styles.hintText, { color: `${theme.text}80` }]}>
-            This won't take long...
-          </Text>
+          <Text style={[styles.hintText, { color: `${theme.text}80` }]}>This won't take long...</Text>
         </Animated.View>
       </View>
     )
@@ -279,30 +309,30 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.container}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.background }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Header with animated entry */}
-          <Animated.View style={[styles.header, {
-            opacity: formAnim,
-            transform: [{
-              translateY: formAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [50, 0],
-              })
-            }]
-          }]}>
-            <Image 
-              source={require("../assets/logo.png")} 
-              style={styles.logo} 
-              resizeMode="contain" 
-            />
+          <Animated.View
+            style={[
+              styles.header,
+              {
+                opacity: formAnim,
+                transform: [
+                  {
+                    translateY: formAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [50, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
             <Text style={[styles.title, { color: theme.text }]}>Airands</Text>
             <Text style={[styles.subtitle, { color: `${theme.text}80` }]}>
               {isSignUp ? "Create your account" : "Welcome back"}
@@ -310,30 +340,37 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
           </Animated.View>
 
           {/* User Type Selector */}
-          <Animated.View style={[styles.userTypeContainer, {
-            opacity: formAnim,
-            transform: [{
-              translateY: formAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [30, 0],
-              })
-            }]
-          }]}>
+          <Animated.View
+            style={[
+              styles.userTypeContainer,
+              {
+                opacity: formAnim,
+                transform: [
+                  {
+                    translateY: formAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [30, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
             <TouchableOpacity
               style={[
                 styles.userTypeButton,
                 userType === "buyer" && styles.activeUserType,
                 {
                   borderBottomColor: userType === "buyer" ? theme.primary : theme.border,
-                  backgroundColor: userType === "buyer" ? `${theme.primary}20` : 'transparent',
+                  backgroundColor: userType === "buyer" ? `${theme.primary}20` : "transparent",
                 },
               ]}
               onPress={() => setUserType("buyer")}
             >
-              <Ionicons 
-                name="person-outline" 
-                size={20} 
-                color={userType === "buyer" ? theme.primary : `${theme.text}80`} 
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={userType === "buyer" ? theme.primary : `${theme.text}80`}
               />
               <Text
                 style={[
@@ -352,15 +389,15 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                 userType === "runner" && styles.activeUserType,
                 {
                   borderBottomColor: userType === "runner" ? theme.primary : theme.border,
-                  backgroundColor: userType === "runner" ? `${theme.primary}20` : 'transparent',
+                  backgroundColor: userType === "runner" ? `${theme.primary}20` : "transparent",
                 },
               ]}
               onPress={() => setUserType("runner")}
             >
-              <Ionicons 
-                name="bicycle-outline" 
-                size={20} 
-                color={userType === "runner" ? theme.primary : `${theme.text}80`} 
+              <Ionicons
+                name="bicycle-outline"
+                size={20}
+                color={userType === "runner" ? theme.primary : `${theme.text}80`}
               />
               <Text
                 style={[
@@ -379,15 +416,15 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                 userType === "seller" && styles.activeUserType,
                 {
                   borderBottomColor: userType === "seller" ? theme.primary : theme.border,
-                  backgroundColor: userType === "seller" ? `${theme.primary}20` : 'transparent',
+                  backgroundColor: userType === "seller" ? `${theme.primary}20` : "transparent",
                 },
               ]}
               onPress={() => setUserType("seller")}
             >
-              <Ionicons 
-                name="storefront-outline" 
-                size={20} 
-                color={userType === "seller" ? theme.primary : `${theme.text}80`} 
+              <Ionicons
+                name="storefront-outline"
+                size={20}
+                color={userType === "seller" ? theme.primary : `${theme.text}80`}
               />
               <Text
                 style={[
@@ -402,25 +439,36 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
           </Animated.View>
 
           {/* Form with staggered animations */}
-          <Animated.View style={[styles.formContainer, {
-            opacity: formAnim,
-            transform: [{
-              translateY: formAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [40, 0],
-              })
-            }]
-          }]}>
-            {isSignUp && (
-              <Animated.View style={{
+          <Animated.View
+            style={[
+              styles.formContainer,
+              {
                 opacity: formAnim,
-                transform: [{
-                  translateX: formAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-20, 0],
-                  })
-                }]
-              }}>
+                transform: [
+                  {
+                    translateY: formAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [40, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {isSignUp && (
+              <Animated.View
+                style={{
+                  opacity: formAnim,
+                  transform: [
+                    {
+                      translateX: formAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-20, 0],
+                      }),
+                    },
+                  ],
+                }}
+              >
                 <TextInput
                   style={[
                     styles.input,
@@ -439,15 +487,19 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
               </Animated.View>
             )}
 
-            <Animated.View style={{
-              opacity: formAnim,
-              transform: [{
-                translateX: formAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-20, 0],
-                })
-              }]
-            }}>
+            <Animated.View
+              style={{
+                opacity: formAnim,
+                transform: [
+                  {
+                    translateX: formAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-20, 0],
+                    }),
+                  },
+                ],
+              }}
+            >
               <TextInput
                 style={[
                   styles.input,
@@ -467,15 +519,19 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
             </Animated.View>
 
             {isSignUp && (
-              <Animated.View style={{
-                opacity: formAnim,
-                transform: [{
-                  translateX: formAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-20, 0],
-                  })
-                }]
-              }}>
+              <Animated.View
+                style={{
+                  opacity: formAnim,
+                  transform: [
+                    {
+                      translateX: formAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-20, 0],
+                      }),
+                    },
+                  ],
+                }}
+              >
                 <TextInput
                   style={[
                     styles.input,
@@ -494,15 +550,19 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
               </Animated.View>
             )}
 
-            <Animated.View style={{
-              opacity: formAnim,
-              transform: [{
-                translateX: formAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-20, 0],
-                })
-              }]
-            }}>
+            <Animated.View
+              style={{
+                opacity: formAnim,
+                transform: [
+                  {
+                    translateX: formAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-20, 0],
+                    }),
+                  },
+                ],
+              }}
+            >
               <TextInput
                 style={[
                   styles.input,
@@ -521,27 +581,24 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
             </Animated.View>
 
             {!isSignUp && (
-              <TouchableOpacity 
-                style={styles.forgotPasswordContainer} 
-                onPress={navigateToPasswordReset}
-              >
+              <TouchableOpacity style={styles.forgotPasswordContainer} onPress={navigateToPasswordReset}>
                 <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>Forgot Password?</Text>
               </TouchableOpacity>
             )}
 
             <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.button, 
-                  { 
+                  styles.button,
+                  {
                     backgroundColor: theme.primary,
                     shadowColor: theme.primary,
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,
                     elevation: 6,
-                  }
-                ]} 
+                  },
+                ]}
                 onPress={handleAuth}
                 activeOpacity={0.8}
               >
@@ -557,16 +614,16 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
 
             <TouchableOpacity
               style={[
-                styles.googleButton, 
-                { 
-                  borderColor: theme.border, 
+                styles.googleButton,
+                {
+                  borderColor: theme.border,
                   backgroundColor: theme.card,
                   shadowColor: theme.shadow,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.1,
                   shadowRadius: 4,
                   elevation: 3,
-                }
+                },
               ]}
               onPress={handleGoogleAuth}
               activeOpacity={0.8}
@@ -580,9 +637,7 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                 {isSignUp ? "Already have an account?" : "Don't have an account?"}
               </Text>
               <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
-                <Text style={[styles.toggleButton, { color: theme.primary }]}>
-                  {isSignUp ? "Sign In" : "Sign Up"}
-                </Text>
+                <Text style={[styles.toggleButton, { color: theme.primary }]}>{isSignUp ? "Sign In" : "Sign Up"}</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -622,23 +677,23 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   progressBarContainer: {
     height: 4,
-    width: '80%',
+    width: "80%",
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 20,
   },
   progressBar: {
-    height: '100%',
+    height: "100%",
   },
   hintText: {
     fontSize: 14,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   scrollContent: {
     flexGrow: 1,
@@ -667,15 +722,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 25,
     marginBottom: 25,
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   userTypeButton: {
     flex: 1,
     paddingVertical: 12,
     alignItems: "center",
     borderBottomWidth: 2,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 8,
     borderRadius: 10,
     marginHorizontal: 4,
@@ -685,7 +740,7 @@ const styles = StyleSheet.create({
   },
   userTypeText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   activeUserTypeText: {
     fontWeight: "600",
@@ -747,7 +802,7 @@ const styles = StyleSheet.create({
   dividerText: {
     paddingHorizontal: 10,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   googleButton: {
     flexDirection: "row",
@@ -760,13 +815,9 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginLeft: 10,
   },
 })
 
 export default AuthScreen
-
-function signInWithGoogle(idToken: string, userType: string) {
-  throw new Error("Function not implemented.")
-}
