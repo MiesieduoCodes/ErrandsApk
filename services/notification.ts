@@ -2,7 +2,7 @@ import { Platform } from "react-native"
 import * as Device from "expo-device"
 import * as Notifications from "expo-notifications"
 import Constants from "expo-constants"
-import { ref, set, get, update, push, type Database } from "firebase/database"
+import { ref, set, get, update, push } from "firebase/database"
 import { database } from "../firebase/config"
 
 // Configure notification handler conditionally for Expo Go
@@ -42,9 +42,6 @@ export interface Notification {
   read: boolean
   createdAt: string
 }
-
-// Type assertion for database
-const firebaseDatabase = database as Database
 
 export const notificationService = {
   async registerForPushNotifications() {
@@ -102,7 +99,7 @@ export const notificationService = {
   // Save FCM token to user profile
   async savePushToken(userId: string, token: string) {
     try {
-      await update(ref(firebaseDatabase, `users/${userId}`), {
+      await update(ref(database, `users/${userId}`), {
         pushToken: token,
         updatedAt: new Date().toISOString(),
       })
@@ -125,7 +122,7 @@ export const notificationService = {
   ) {
     try {
       // Get user's push token
-      const userSnapshot = await get(ref(firebaseDatabase, `users/${userId}`))
+      const userSnapshot = await get(ref(database, `users/${userId}`))
       if (!userSnapshot.exists()) {
         throw new Error("User not found")
       }
@@ -134,7 +131,7 @@ export const notificationService = {
       const pushToken = userData.pushToken
 
       // Save notification to database
-      const notificationsRef = ref(firebaseDatabase, `notifications/${userId}`)
+      const notificationsRef = ref(database, `notifications/${userId}`)
       const newNotificationRef = push(notificationsRef)
 
       const notificationData: Notification = {
@@ -185,7 +182,7 @@ export const notificationService = {
   // Get user's notifications
   async getUserNotifications(userId: string): Promise<Notification[]> {
     try {
-      const notificationsRef = ref(firebaseDatabase, `notifications/${userId}`)
+      const notificationsRef = ref(database, `notifications/${userId}`)
       const snapshot = await get(notificationsRef)
 
       if (!snapshot.exists()) {
@@ -211,7 +208,7 @@ export const notificationService = {
   // Mark notification as read
   async markNotificationAsRead(userId: string, notificationId: string): Promise<void> {
     try {
-      await update(ref(firebaseDatabase, `notifications/${userId}/${notificationId}`), {
+      await update(ref(database, `notifications/${userId}/${notificationId}`), {
         read: true,
         updatedAt: new Date().toISOString(),
       })
@@ -224,7 +221,7 @@ export const notificationService = {
   // Mark all notifications as read
   async markAllNotificationsAsRead(userId: string): Promise<void> {
     try {
-      const notificationsRef = ref(firebaseDatabase, `notifications/${userId}`)
+      const notificationsRef = ref(database, `notifications/${userId}`)
       const snapshot = await get(notificationsRef)
 
       if (!snapshot.exists()) {
@@ -241,7 +238,7 @@ export const notificationService = {
       })
 
       if (Object.keys(updates).length > 0) {
-        await update(ref(firebaseDatabase), updates)
+        await update(ref(database), updates)
       }
     } catch (error) {
       console.error("Error marking all notifications as read:", error)
@@ -252,7 +249,7 @@ export const notificationService = {
   // Delete notification
   async deleteNotification(userId: string, notificationId: string, p0?: { read: boolean }): Promise<void> {
     try {
-      await set(ref(firebaseDatabase, `notifications/${userId}/${notificationId}`), null)
+      await set(ref(database, `notifications/${userId}/${notificationId}`), null)
     } catch (error) {
       console.error("Error deleting notification:", error)
       throw error
@@ -268,7 +265,7 @@ export const notificationService = {
   ): Promise<void> {
     try {
       // Get errand details
-      const errandSnapshot = await get(ref(firebaseDatabase, `errands/${errandId}`))
+      const errandSnapshot = await get(ref(database, `errands/${errandId}`))
       if (!errandSnapshot.exists()) {
         throw new Error("Errand not found")
       }

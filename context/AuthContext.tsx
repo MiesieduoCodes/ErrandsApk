@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { createContext, useState, useContext, useEffect } from "react"
 import { auth, db } from "../firebase/config"
 import {
@@ -9,15 +11,10 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   updateProfile,
-  User,
-  Auth,
+  type User,
 } from "firebase/auth"
-import { doc, setDoc, Firestore } from "firebase/firestore"
+import { doc, setDoc } from "firebase/firestore"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-
-// Explicitly type the imported auth and db
-const typedAuth = auth as Auth
-const typedDb = db as Firestore
 
 interface AuthContextType {
   user: User | null
@@ -44,13 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (!typedAuth) {
+    if (!auth) {
       console.error("Auth is not initialized")
       setIsLoading(false)
-      return
+      return () => {}
     }
 
-    const unsubscribe = onAuthStateChanged(typedAuth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user)
         try {
@@ -77,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false)
     })
 
-    if (!typedAuth) {
+    if (!auth) {
       const getUserFromStorage = async () => {
         try {
           const userData = await AsyncStorage.getItem("user")
@@ -98,10 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const login = async (email: string, password: string) => {
-    if (!typedAuth) throw new Error("Auth is not initialized")
+    if (!auth) throw new Error("Auth is not initialized")
 
     try {
-      const userCredential = await signInWithEmailAndPassword(typedAuth, email, password)
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
       setUser(userCredential.user)
     } catch (error: any) {
       console.error("Login error:", error.message)
@@ -110,15 +107,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const register = async (email: string, password: string, displayName: string) => {
-    if (!typedAuth || !typedDb) throw new Error("Firebase services are not initialized")
+    if (!auth || !db) throw new Error("Firebase services are not initialized")
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(typedAuth, email, password)
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
       await updateProfile(user, { displayName })
 
-      await setDoc(doc(typedDb, "users", user.uid), {
+      await setDoc(doc(db, "users", user.uid), {
         email,
         displayName,
         createdAt: new Date().toISOString(),
@@ -133,10 +130,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = async () => {
-    if (!typedAuth) throw new Error("Auth is not initialized")
+    if (!auth) throw new Error("Auth is not initialized")
 
     try {
-      await signOut(typedAuth)
+      await signOut(auth)
       setUser(null)
     } catch (error: any) {
       console.error("Logout error:", error.message)
@@ -145,10 +142,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const resetPassword = async (email: string) => {
-    if (!typedAuth) throw new Error("Auth is not initialized")
+    if (!auth) throw new Error("Auth is not initialized")
 
     try {
-      await sendPasswordResetEmail(typedAuth, email)
+      await sendPasswordResetEmail(auth, email)
     } catch (error: any) {
       console.error("Reset password error:", error.message)
       throw error
@@ -156,14 +153,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const updateUserProfile = async (displayName: string, photoURL?: string) => {
-    if (!typedAuth?.currentUser) throw new Error("User is not authenticated")
+    if (!auth?.currentUser) throw new Error("User is not authenticated")
 
     try {
-      await updateProfile(typedAuth.currentUser, { displayName, photoURL })
+      await updateProfile(auth.currentUser, { displayName, photoURL })
 
-      if (typedDb) {
+      if (db) {
         await setDoc(
-          doc(typedDb, "users", typedAuth.currentUser.uid),
+          doc(db, "users", auth.currentUser.uid),
           {
             displayName,
             photoURL,
@@ -173,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         )
       }
 
-      setUser({ ...typedAuth.currentUser })
+      setUser({ ...auth.currentUser })
     } catch (error: any) {
       console.error("Update profile error:", error.message)
       throw error

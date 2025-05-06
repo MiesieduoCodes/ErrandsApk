@@ -1,9 +1,8 @@
-
 import { initializeApp } from "firebase/app"
-import { getAuth } from "firebase/auth"
-import { getDatabase } from "firebase/database"
-import { getFirestore } from "firebase/firestore"
-import { getStorage } from "firebase/storage"
+import { getAuth, type Auth } from "firebase/auth"
+import { getDatabase, type Database } from "firebase/database"
+import { getFirestore, type Firestore } from "firebase/firestore"
+import { getStorage, type FirebaseStorage } from "firebase/storage"
 import Constants from "expo-constants"
 
 // Your web app's Firebase configuration
@@ -18,24 +17,14 @@ const firebaseConfig = {
 }
 
 // Initialize Firebase
-let app
-let auth
-let database
-let db
-let storage
+const app = initializeApp(firebaseConfig)
 
-try {
-  // Initialize Firebase App
-  app = initializeApp(firebaseConfig)
+// Initialize Firebase services with proper typing
+const auth = getAuth(app) as Auth
+const db = getFirestore(app) as Firestore
+const database = getDatabase(app) as Database
+const storage = getStorage(app) as FirebaseStorage
 
-  // Initialize Firebase services
-  auth = getAuth(app)
-  db = getFirestore(app)
-  database = getDatabase(app)
-  storage = getStorage(app)
-} catch (error) {
-  console.error("Firebase initialization error", error)
-}
-
-// Export initialized services
+// Export initialized services with their proper types
 export { app, auth, db, database, storage }
+export type { Auth, Firestore, Database, FirebaseStorage }
