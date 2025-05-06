@@ -8,6 +8,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context"
 import * as Notifications from "expo-notifications"
 import NetInfo from "@react-native-community/netinfo"
 import { View, Text } from "react-native"
+import Constants from "expo-constants"
 
 // Screens
 import SplashScreen from "./screens/SplashScreen"
@@ -48,16 +49,18 @@ import { setupDeepLinkListener } from "./services/socialSharing"
 
 const Stack = createNativeStackNavigator()
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-})
+// Configure notification behavior only if not in Expo Go
+if (!Constants.appOwnership || Constants.appOwnership !== "expo") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  })
+}
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true)
@@ -93,15 +96,21 @@ export default function App() {
 
     initializeApp()
 
-    // Set up notification listeners
-    const subscription = Notifications.addNotificationReceivedListener((notification) => {
-      console.log("Notification received:", notification)
-    })
+    // Set up notification listeners only if not in Expo Go
+    let subscription: any = null
+    let responseSubscription: any = null
 
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log("Notification response received:", response)
-      // Handle notification tap
-    })
+    if (!Constants.appOwnership || Constants.appOwnership !== "expo") {
+      // Set up notification listeners
+      subscription = Notifications.addNotificationReceivedListener((notification) => {
+        console.log("Notification received:", notification)
+      })
+
+      responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("Notification response received:", response)
+        // Handle notification tap
+      })
+    }
 
     // Set up network connectivity listener
     const netInfoUnsubscribe = NetInfo.addEventListener((state) => {
@@ -115,8 +124,8 @@ export default function App() {
     })
 
     return () => {
-      subscription.remove()
-      responseSubscription.remove()
+      if (subscription) subscription.remove()
+      if (responseSubscription) responseSubscription.remove()
       netInfoUnsubscribe()
       if (deepLinkUnsubscribe) deepLinkUnsubscribe()
     }

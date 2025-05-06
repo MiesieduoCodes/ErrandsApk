@@ -1,19 +1,24 @@
-import { Platform } from "react-native";
-import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
-import { ref, set, get, update, push } from "firebase/database";
-import { database } from "../firebase/config";
+import { Platform } from "react-native"
+import * as Device from "expo-device"
+import * as Notifications from "expo-notifications"
+import Constants from "expo-constants"
+import { ref, set, get, update, push, type Database } from "firebase/database"
+import { database } from "../firebase/config"
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true   
-  }),
-});
+// Configure notification handler conditionally for Expo Go
+if (!Constants.appOwnership || Constants.appOwnership !== "expo") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  })
+} else {
+  console.log("Push notifications are limited in Expo Go. Use a development build for full functionality.")
+}
 
 // Notification types
 export type NotificationType =
@@ -25,53 +30,60 @@ export type NotificationType =
   | "payment_received"
   | "payment_completed"
   | "new_message"
-  | "system";
+  | "system"
 
 export interface Notification {
-  id?: string;
-  userId: string;
-  title: string;
-  body: string;
-  data?: any;
-  type: NotificationType;
-  read: boolean;
-  createdAt: string;
+  id?: string
+  userId: string
+  title: string
+  body: string
+  data?: any
+  type: NotificationType
+  read: boolean
+  createdAt: string
 }
 
+// Type assertion for database
+const firebaseDatabase = database as Database
 
 export const notificationService = {
-
   async registerForPushNotifications() {
-    let token: string | undefined;
+    // Skip in Expo Go
+    if (Constants.appOwnership === "expo") {
+      console.log("Push notifications are not fully supported in Expo Go. Use a development build instead.")
+      return undefined
+    }
+
+    let token: string | undefined
 
     if (!Device.isDevice) {
-      console.log("Push notifications are not available in the simulator");
-      return undefined;
+      console.log("Push notifications are not available in the simulator")
+      return undefined
     }
 
     // Check if we have permission
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    const { status: existingStatus } = await Notifications.getPermissionsAsync()
+    let finalStatus = existingStatus
 
     // If we don't have permission, ask for it
     if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+      const { status } = await Notifications.requestPermissionsAsync()
+      finalStatus = status
     }
 
     // If we still don't have permission, exit
     if (finalStatus !== "granted") {
-      console.log("Failed to get push token for push notification!");
-      return undefined;
+      console.log("Failed to get push token for push notification!")
+      return undefined
     }
 
     // Get the token
     try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId
+      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data
     } catch (error) {
-      console.error("Error getting push token:", error);
-      return undefined;
+      console.error("Error getting push token:", error)
+      return undefined
     }
 
     // Configure for Android
@@ -81,23 +93,23 @@ export const notificationService = {
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: "#34D186",
-      });
+      })
     }
 
-    return token;
+    return token
   },
 
   // Save FCM token to user profile
   async savePushToken(userId: string, token: string) {
     try {
-      await update(ref(database, `users/${userId}`), {
+      await update(ref(firebaseDatabase, `users/${userId}`), {
         pushToken: token,
         updatedAt: new Date().toISOString(),
-      });
-      return true;
+      })
+      return true
     } catch (error) {
-      console.error("Error saving push token:", error);
-      throw error;
+      console.error("Error saving push token:", error)
+      throw error
     }
   },
 
@@ -105,25 +117,25 @@ export const notificationService = {
   async sendNotification(
     userId: string,
     notification: {
-      title: string;
-      body: string;
-      data?: any;
-      type: NotificationType;
+      title: string
+      body: string
+      data?: any
+      type: NotificationType
     },
   ) {
     try {
       // Get user's push token
-      const userSnapshot = await get(ref(database, `users/${userId}`));
+      const userSnapshot = await get(ref(firebaseDatabase, `users/${userId}`))
       if (!userSnapshot.exists()) {
-        throw new Error("User not found");
+        throw new Error("User not found")
       }
 
-      const userData = userSnapshot.val();
-      const pushToken = userData.pushToken;
+      const userData = userSnapshot.val()
+      const pushToken = userData.pushToken
 
       // Save notification to database
-      const notificationsRef = ref(database, `notifications/${userId}`);
-      const newNotificationRef = push(notificationsRef);
+      const notificationsRef = ref(firebaseDatabase, `notifications/${userId}`)
+      const newNotificationRef = push(notificationsRef)
 
       const notificationData: Notification = {
         userId,
@@ -133,15 +145,15 @@ export const notificationService = {
         type: notification.type,
         read: false,
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      await set(newNotificationRef, notificationData);
+      await set(newNotificationRef, notificationData)
 
       // If user has a push token, send the notification
       if (pushToken) {
         // In a production app, you would use a server to send this
         // For this example, we'll just log it
-        console.log(`Sending push notification to ${pushToken}:`, notification);
+        console.log(`Sending push notification to ${pushToken}:`, notification)
 
         // In a real implementation, you would use Firebase Cloud Functions or your own server:
         /*
@@ -163,87 +175,87 @@ export const notificationService = {
       return {
         id: newNotificationRef.key,
         ...notificationData,
-      };
+      }
     } catch (error) {
-      console.error("Error sending notification:", error);
-      throw error;
+      console.error("Error sending notification:", error)
+      throw error
     }
   },
 
   // Get user's notifications
   async getUserNotifications(userId: string): Promise<Notification[]> {
     try {
-      const notificationsRef = ref(database, `notifications/${userId}`);
-      const snapshot = await get(notificationsRef);
+      const notificationsRef = ref(firebaseDatabase, `notifications/${userId}`)
+      const snapshot = await get(notificationsRef)
 
       if (!snapshot.exists()) {
-        return [];
+        return []
       }
 
-      const notifications: Notification[] = [];
+      const notifications: Notification[] = []
       snapshot.forEach((childSnapshot) => {
         notifications.push({
           id: childSnapshot.key,
           ...childSnapshot.val(),
-        });
-      });
+        })
+      })
 
       // Sort by creation date (newest first)
-      return notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     } catch (error) {
-      console.error("Error getting user notifications:", error);
-      throw error;
+      console.error("Error getting user notifications:", error)
+      throw error
     }
   },
 
   // Mark notification as read
   async markNotificationAsRead(userId: string, notificationId: string): Promise<void> {
     try {
-      await update(ref(database, `notifications/${userId}/${notificationId}`), {
+      await update(ref(firebaseDatabase, `notifications/${userId}/${notificationId}`), {
         read: true,
         updatedAt: new Date().toISOString(),
-      });
+      })
     } catch (error) {
-      console.error("Error marking notification as read:", error);
-      throw error;
+      console.error("Error marking notification as read:", error)
+      throw error
     }
   },
 
   // Mark all notifications as read
   async markAllNotificationsAsRead(userId: string): Promise<void> {
     try {
-      const notificationsRef = ref(database, `notifications/${userId}`);
-      const snapshot = await get(notificationsRef);
+      const notificationsRef = ref(firebaseDatabase, `notifications/${userId}`)
+      const snapshot = await get(notificationsRef)
 
       if (!snapshot.exists()) {
-        return;
+        return
       }
 
-      const updates: Record<string, any> = {};
+      const updates: Record<string, any> = {}
       snapshot.forEach((childSnapshot) => {
-        const notification = childSnapshot.val();
+        const notification = childSnapshot.val()
         if (!notification.read) {
-          updates[`notifications/${userId}/${childSnapshot.key}/read`] = true;
-          updates[`notifications/${userId}/${childSnapshot.key}/updatedAt`] = new Date().toISOString();
+          updates[`notifications/${userId}/${childSnapshot.key}/read`] = true
+          updates[`notifications/${userId}/${childSnapshot.key}/updatedAt`] = new Date().toISOString()
         }
-      });
+      })
 
       if (Object.keys(updates).length > 0) {
-        await update(ref(database), updates);
+        await update(ref(firebaseDatabase), updates)
       }
     } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-      throw error;
+      console.error("Error marking all notifications as read:", error)
+      throw error
     }
   },
 
   // Delete notification
-  async deleteNotification(userId: string, notificationId: string, p0?: { read: boolean; }): Promise<void> {
+  async deleteNotification(userId: string, notificationId: string, p0?: { read: boolean }): Promise<void> {
     try {
-      await set(ref(database, `notifications/${userId}/${notificationId}`), null);
+      await set(ref(firebaseDatabase, `notifications/${userId}/${notificationId}`), null)
     } catch (error) {
-      console.error("Error deleting notification:", error);
-      throw error;
+      console.error("Error deleting notification:", error)
+      throw error
     }
   },
 
@@ -256,42 +268,42 @@ export const notificationService = {
   ): Promise<void> {
     try {
       // Get errand details
-      const errandSnapshot = await get(ref(database, `errands/${errandId}`));
+      const errandSnapshot = await get(ref(firebaseDatabase, `errands/${errandId}`))
       if (!errandSnapshot.exists()) {
-        throw new Error("Errand not found");
+        throw new Error("Errand not found")
       }
 
-      const errand = errandSnapshot.val();
+      const errand = errandSnapshot.val()
 
-      let title = "";
-      let body = "";
-      let type: NotificationType = "system";
+      let title = ""
+      let body = ""
+      let type: NotificationType = "system"
 
       switch (status) {
         case "accepted":
-          title = "Airand Accepted";
-          body = `Your ${errand.errandType} airand has been accepted by a runner.`;
-          type = "errand_accepted";
-          break;
+          title = "Airand Accepted"
+          body = `Your ${errand.errandType} airand has been accepted by a runner.`
+          type = "errand_accepted"
+          break
         case "in_progress":
-          title = "Airand Started";
-          body = `Your ${errand.errandType} airand is now in progress.`;
-          type = "errand_started";
-          break;
+          title = "Airand Started"
+          body = `Your ${errand.errandType} airand is now in progress.`
+          type = "errand_started"
+          break
         case "completed":
-          title = "Airand Completed";
-          body = `Your ${errand.errandType} airand has been completed.`;
-          type = "errand_completed";
-          break;
+          title = "Airand Completed"
+          body = `Your ${errand.errandType} airand has been completed.`
+          type = "errand_completed"
+          break
         case "cancelled":
-          title = "Airand Cancelled";
-          body = `Your ${errand.errandType} airand has been cancelled.`;
-          type = "errand_cancelled";
-          break;
+          title = "Airand Cancelled"
+          body = `Your ${errand.errandType} airand has been cancelled.`
+          type = "errand_cancelled"
+          break
         default:
-          title = "Airand Update";
-          body = `Your ${errand.errandType} airand status has been updated to ${status}.`;
-          type = "system";
+          title = "Airand Update"
+          body = `Your ${errand.errandType} airand status has been updated to ${status}.`
+          type = "system"
       }
 
       await this.sendNotification(recipientId, {
@@ -303,12 +315,12 @@ export const notificationService = {
           senderId,
         },
         type,
-      });
+      })
     } catch (error) {
-      console.error("Error sending errand status notification:", error);
-      throw error;
+      console.error("Error sending errand status notification:", error)
+      throw error
     }
   },
-};
+}
 
-export default notificationService;
+export default notificationService
