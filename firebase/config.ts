@@ -1,10 +1,8 @@
-// firebase.ts (or firebase.js)
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeAuth } from "firebase/auth";
+import { getAuth } from "firebase/auth"; // Ensure you're using getAuth
 import { getDatabase } from "firebase/database";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 
 // Your Firebase configuration
 const firebaseConfig = {
@@ -29,29 +27,21 @@ try {
   // Initialize Firebase App
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-  // Initialize Auth with AsyncStorage persistence
-  auth = initializeAuth(app);
+  // Initialize Auth
+  auth = getAuth(app); // Correctly initialize auth
 
-  // Initialize Realtime Database
+  // Initialize other services
   database = getDatabase(app);
-  
-  // Initialize Firestore with offline persistence
   db = getFirestore(app);
   enableIndexedDbPersistence(db)
     .then(() => console.log("Firestore offline persistence enabled"))
     .catch((err) => {
       if (err.code === "failed-precondition") {
-        console.warn(
-          "Firestore persistence already enabled in another tab."
-        );
+        console.warn("Firestore persistence already enabled in another tab.");
       } else if (err.code === "unimplemented") {
-        console.warn(
-          "Current browser does not support all features required for Firestore persistence"
-        );
+        console.warn("Current browser does not support Firestore persistence");
       }
     });
-
-  // Initialize Cloud Storage
   storage = getStorage(app);
 } catch (error) {
   console.error("Firebase initialization error", error);
@@ -59,3 +49,16 @@ try {
 
 // Export initialized services
 export { app, auth, database, db, storage };
+
+// Example usage of onAuthStateChanged
+if (auth) {
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      console.log("User is signed in:", user);
+    } else {
+      console.log("No user is signed in.");
+    }
+  });
+} else {
+  console.error("Auth has not been initialized");
+}
