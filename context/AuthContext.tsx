@@ -69,6 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getStoredUserType()
 
     // Set up auth state listener
+    if (!auth) {
+      console.error("Auth is not initialized");
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user)

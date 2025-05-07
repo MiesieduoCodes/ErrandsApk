@@ -20,8 +20,8 @@ try {
 }
 
 // Explicitly type the imported auth and db
-const typedAuth: Auth = auth
-const typedDb: Firestore = db
+const typedAuth: Auth = auth ?? (() => { throw new Error("Auth is not initialized") })()
+const typedDb: Firestore = db ?? (() => { throw new Error("Firestore is not initialized") })()
 
 export { auth, db, storage, database }
 
