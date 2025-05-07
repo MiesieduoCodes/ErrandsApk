@@ -226,7 +226,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             </Text>
             <View style={styles.buttonIcon}>
               <Text style={[styles.buttonText, { fontSize: 20 }]}>
-                {currentIndex === slides.length - 1 ? "🎉" : "→"}
+                {currentIndex === slides.length - 1 ? "🎉" : "➡️"}
               </Text>
             </View>
           </TouchableOpacity>
