@@ -2,7 +2,12 @@
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app"
-import { getAuth, Auth } from "firebase/auth"
+import { 
+  initializeAuth,
+  getReactNativePersistence,
+  Auth,
+  browserLocalPersistence
+} from "firebase/auth"
 import { getFirestore, Firestore } from "firebase/firestore"
 import { getStorage, FirebaseStorage } from "firebase/storage"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -12,7 +17,6 @@ interface FirebaseContextType {
   auth: Auth | null
   db: Firestore | null
   storage: FirebaseStorage | null
-  initializeFirebase: () => Promise<void>
 }
 
 const FirebaseContext = createContext<FirebaseContextType>({
@@ -20,7 +24,6 @@ const FirebaseContext = createContext<FirebaseContextType>({
   auth: null,
   db: null,
   storage: null,
-  initializeFirebase: async () => {},
 })
 
 export const FirebaseProvider = ({ children }: { children: React.ReactNode }) => {
@@ -29,37 +32,49 @@ export const FirebaseProvider = ({ children }: { children: React.ReactNode }) =>
   const [db, setDb] = useState<Firestore | null>(null)
   const [storage, setStorage] = useState<FirebaseStorage | null>(null)
 
-  const initializeFirebase = async () => {
-    try {
-      let app: FirebaseApp
-      if (getApps().length === 0) {
-        app = initializeApp({
-          apiKey: "AIzaSyDfUOYw5tJrRLZAkzN8MWyqzxUbADjz8dE",
-          authDomain: "airands-app.firebaseapp.com",
-          projectId: "airands-app",
-          storageBucket: "airands-app.appspot.com",
-          messagingSenderId: "917138938207",
-          appId: "1:917138938207:web:c5d3d7c1a8b4b1b1b1b1b1"
-        })
-      } else {
-        app = getApp()
-      }
-
-      setAuth(getAuth(app))
-      setDb(getFirestore(app))
-      setStorage(getStorage(app))
-      setIsFirebaseReady(true)
-    } catch (error) {
-      console.error("Firebase initialization error", error)
-    }
-  }
-
   useEffect(() => {
+    const initializeFirebase = async () => {
+      try {
+        console.log("Initializing Firebase...")
+        
+        // Initialize Firebase App
+        const app = getApps().length === 0 
+          ? initializeApp({
+            apiKey: "AIzaSyAQLHTMNHexjbSJXsATVICgNSKVu1o4F8A",
+            authDomain: "boltlikeapp.firebaseapp.com",
+            projectId: "boltlikeapp",
+            storageBucket: "boltlikeapp.firebasestorage.app",
+            messagingSenderId: "295259306973",
+            appId: "1:295259306973:web:2e2e7a509eea402daa9434"
+            })
+          : getApp()
+
+        // Initialize Auth with persistence
+        const authInstance = initializeAuth(app, {
+          persistence: getReactNativePersistence(AsyncStorage)
+        })
+
+        // Initialize other services
+        const firestore = getFirestore(app)
+        const storageInstance = getStorage(app)
+
+        setAuth(authInstance)
+        setDb(firestore)
+        setStorage(storageInstance)
+        setIsFirebaseReady(true)
+        
+        console.log("Firebase initialized successfully")
+      } catch (error) {
+        console.error("Firebase initialization failed:", error)
+        // Implement your error handling strategy here
+      }
+    }
+
     initializeFirebase()
   }, [])
 
   return (
-    <FirebaseContext.Provider value={{ isFirebaseReady, auth, db, storage, initializeFirebase }}>
+    <FirebaseContext.Provider value={{ isFirebaseReady, auth, db, storage }}>
       {children}
     </FirebaseContext.Provider>
   )
