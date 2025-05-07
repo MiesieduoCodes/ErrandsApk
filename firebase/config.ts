@@ -1,6 +1,7 @@
-// DO NOT import firebase/auth or other Firebase services here
-// This file only initializes the Firebase app
+// Initialize Firebase with Auth
 import { initializeApp } from "firebase/app"
+import { getAuth } from "firebase/auth"
+import { getDatabase } from "firebase/database"
 import Constants from "expo-constants"
 
 // Your web app's Firebase configuration
@@ -14,7 +15,11 @@ const firebaseConfig = {
   databaseURL: Constants.expoConfig?.extra?.firebaseDatabaseURL || "https://boltlikeapp-default-rtdb.firebaseio.com",
 }
 
-// Initialize Firebase app only
+// Initialize Firebase app
 const app = initializeApp(firebaseConfig)
 
-export { app }
+// Initialize Firebase services
+const auth = getAuth(app)
+const database = getDatabase(app)
+
+export { app, auth, database }
