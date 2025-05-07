@@ -1,27 +1,14 @@
 // Import auth and other Firebase services here
-import { getAuth, sendPasswordResetEmail, signOut, type User, type Auth } from "firebase/auth"
-import { getFirestore, doc, getDoc, setDoc, updateDoc, type Firestore } from "firebase/firestore"
-import { getStorage } from "firebase/storage"
-import { getDatabase } from "firebase/database"
-import { app } from "./config"
+import { sendPasswordResetEmail, signOut, type User, type Auth } from "firebase/auth"
+import { doc, getDoc, setDoc, updateDoc, type Firestore } from "firebase/firestore"
+import { auth, db, storage, database } from "./config"
 
-// Initialize Firebase services
-let auth, db, storage, database
-
-// Use try-catch to handle initialization errors
-try {
-  auth = getAuth(app)
-  db = getFirestore(app)
-  storage = getStorage(app)
-  database = getDatabase(app)
-  console.log("Firebase services initialized successfully")
-} catch (error) {
-  console.error("Error initializing Firebase services:", error)
-}
+// No need to re-initialize services since we're importing them from config.ts
+// Just use the imported services directly
 
 // Explicitly type the imported auth and db
-const typedAuth: Auth = auth ?? (() => { throw new Error("Auth is not initialized") })()
-const typedDb: Firestore = db ?? (() => { throw new Error("Firestore is not initialized") })()
+const typedAuth: Auth = auth
+const typedDb: Firestore = db
 
 export { auth, db, storage, database }
 
