@@ -51,7 +51,7 @@ export default function App() {
     const initializeApp = async () => {
       try {
         // Ensure JS runtime is ready
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 1000))
 
         const hasLaunched = await AsyncStorage.getItem("hasLaunched")
         if (hasLaunched === null) {
@@ -65,10 +65,10 @@ export default function App() {
         console.error("Error initializing app:", error)
         setIsFirstLaunch(false)
       } finally {
-        // Simulate loading time
+        // Simulate loading time to ensure Firebase is ready
         setTimeout(() => {
           setIsLoading(false)
-        }, 2000) // Reduced time for quicker testing
+        }, 3000) // Increased time to ensure Firebase initialization
       }
     }
 
@@ -108,8 +108,6 @@ export default function App() {
           <ThemeProvider>
             <NavigationContainer
               onReady={() => console.log("Navigation container is ready")}
-              onStateChange={() => console.log("Navigation state changed")}
-              onUnhandledAction={(action) => console.log("Unhandled action:", action)}
               fallback={<SplashScreen />}
             >
               <OfflineIndicator />

@@ -2,19 +2,24 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import { app, auth, db, storage, database } from "../firebase/config"
-import type { Auth } from "firebase/auth"
-import type { Firestore as FirestoreType } from "@firebase/firestore"
-import type { Storage } from "firebase/storage"
-import type { Database as DatabaseType } from "@firebase/database"
+// Import with explicit type annotations
+import {
+  app as firebaseApp,
+  auth as firebaseAuth,
+  db as firebaseDb,
+  storage as firebaseStorage,
+  database as firebaseDatabase,
+} from "../firebase/config"
 import type { FirebaseApp } from "firebase/app"
+import type { Auth } from "firebase/auth"
 
+// Define the Firebase context type with explicit any types
 interface FirebaseContextType {
-  app: FirebaseApp | null
-  auth: Auth | null
-  db: FirestoreType | null
-  storage: Storage | null
-  database: DatabaseType | null
+  app: FirebaseApp | any
+  auth: Auth | any
+  db: any
+  storage: any
+  database: any
   isFirebaseReady: boolean
 }
 
@@ -32,23 +37,32 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isFirebaseReady, setIsFirebaseReady] = useState(false)
 
   useEffect(() => {
-    // Simple check to ensure Firebase is initialized
-    if (auth && db && storage && database) {
-      console.log("Firebase services are ready")
-      setIsFirebaseReady(true)
-    } else {
-      console.error("Some Firebase services are not initialized")
+    // Check if Firebase is initialized
+    const checkFirebaseReady = async () => {
+      try {
+        // Simple check to ensure Firebase is initialized
+        if (firebaseAuth && firebaseDb && firebaseStorage && firebaseDatabase) {
+          console.log("Firebase services are ready")
+          setIsFirebaseReady(true)
+        } else {
+          console.error("Some Firebase services are not initialized")
+        }
+      } catch (error) {
+        console.error("Error checking Firebase readiness:", error)
+      }
     }
+
+    checkFirebaseReady()
   }, [])
 
   return (
     <FirebaseContext.Provider
       value={{
-        app,
-        auth,
-        db,
-        storage,
-        database,
+        app: firebaseApp,
+        auth: firebaseAuth,
+        db: firebaseDb,
+        storage: firebaseStorage,
+        database: firebaseDatabase,
         isFirebaseReady,
       }}
     >

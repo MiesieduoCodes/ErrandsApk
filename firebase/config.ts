@@ -1,11 +1,12 @@
 import { initializeApp, getApps, getApp } from "firebase/app"
-import { getAuth } from "firebase/auth"
+import { getAuth, initializeAuth } from "firebase/auth"
+import { getReactNativePersistence } from "@react-native-firebase/auth"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
 import { getDatabase } from "firebase/database"
+import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage"
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+
 const firebaseConfig = {
   apiKey: "AIzaSyAQLHTMNHexjbSJXsATVICgNSKVu1o4F8A",
   authDomain: "boltlikeapp.firebaseapp.com",
@@ -16,19 +17,32 @@ const firebaseConfig = {
   measurementId: "G-DLM5G0NPFZ",
 }
 
-// Initialize Firebase
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
-// Initialize Firebase services
-const auth = getAuth(app)
-const db = getFirestore(app)
-const storage = getStorage(app)
-const database = getDatabase(app)
+// Initialize Firebase
+let app
+let auth
+let db
+let storage
+let database
+
+// Ensure Firebase is initialized only once
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig)
+
+  // Initialize auth with persistence
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+  })
+
+  db = getFirestore(app)
+  storage = getStorage(app)
+  database = getDatabase(app)
+} else {
+  app = getApp()
+  auth = getAuth(app)
+  db = getFirestore(app)
+  storage = getStorage(app)
+  database = getDatabase(app)
+}
 
 export { app, auth, db, storage, database }
-
-
-
-  // databaseURL: Constants.expoConfig?.extra?.firebaseDatabaseURL || "https://boltlikeapp-default-rtdb.firebaseio.com",
-
-

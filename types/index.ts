@@ -1,7 +1,5 @@
 // User types
 export interface User {
-  lastActive: any
-  tags?: string[] // Made optional
   id: string
   uid?: string
   name?: string
@@ -10,7 +8,7 @@ export interface User {
   userType: UserType
 }
 
-export type UserType = "buyer" | "runner" | "seller" | "admin"
+export type UserType = "buyer" | "runner" | "seller"
 
 // Errand types
 export interface Errand {
