@@ -5,13 +5,14 @@ import { createContext, useContext, useState, useEffect } from "react"
 // Import with explicit type annotations
 import {
   app as firebaseApp,
-  auth as firebaseAuth,
+  auth as firebaseAuth, // Ensure explicit typing
   db as firebaseDb,
   storage as firebaseStorage,
   database as firebaseDatabase,
 } from "../firebase/config"
 import type { FirebaseApp } from "firebase/app"
 import type { Auth } from "firebase/auth"
+import { getAuth } from "firebase/auth"
 
 // Define the Firebase context type with explicit any types
 interface FirebaseContextType {
@@ -25,7 +26,7 @@ interface FirebaseContextType {
 
 // Create context with default values
 const FirebaseContext = createContext<FirebaseContextType>({
-  app: null,
+  auth: getAuth(firebaseApp),
   auth: null,
   db: null,
   storage: null,
