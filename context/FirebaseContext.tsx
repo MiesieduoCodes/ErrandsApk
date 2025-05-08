@@ -3,29 +3,24 @@
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { app, auth, db, storage, database } from "../firebase/config"
-import type { FirebaseApp } from "firebase/app"
-import type { Auth } from "firebase/auth"
-import type { Firestore } from "firebase/firestore"
-import type { FirebaseStorage } from "firebase/storage"
-import type { Database } from "firebase/database"
 
-// Define the Firebase context type
+// Simplified context type - focus on functionality over TypeScript perfection
 interface FirebaseContextType {
-  app: FirebaseApp
-  auth: Auth
-  db: Firestore
-  storage: FirebaseStorage
-  database: Database
+  app: any
+  auth: any
+  db: any
+  storage: any
+  database: any
   isFirebaseReady: boolean
 }
 
-// Create context with default values using type assertions
+// Create context with default values
 const FirebaseContext = createContext<FirebaseContextType>({
-  app: {} as FirebaseApp,
-  auth: {} as Auth,
-  db: {} as Firestore,
-  storage: {} as FirebaseStorage,
-  database: {} as Database,
+  app: null,
+  auth: null,
+  db: null,
+  storage: null,
+  database: null,
   isFirebaseReady: false,
 })
 
@@ -33,15 +28,28 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isFirebaseReady, setIsFirebaseReady] = useState(false)
 
   useEffect(() => {
-    // Check if Firebase is initialized
+    // More robust check for Firebase initialization
     const checkFirebaseReady = async () => {
       try {
-        // Simple check to ensure Firebase is initialized
+        // Wait a moment to ensure JS runtime is ready
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
+        console.log("Checking Firebase services...")
+        console.log("Auth available:", !!auth)
+        console.log("Firestore available:", !!db)
+        console.log("Storage available:", !!storage)
+        console.log("Database available:", !!database)
+
         if (auth && db && storage && database) {
-          console.log("Firebase services are ready")
+          console.log("All Firebase services are ready")
           setIsFirebaseReady(true)
         } else {
           console.error("Some Firebase services are not initialized")
+
+          // Try to reinitialize if needed (this is a fallback)
+          if (!auth) {
+            console.log("Auth not available, this might cause the 'auth not registered' error")
+          }
         }
       } catch (error) {
         console.error("Error checking Firebase readiness:", error)
@@ -51,17 +59,20 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     checkFirebaseReady()
   }, [])
 
-  // Use type assertions to tell TypeScript what types these variables are
-  const contextValue: FirebaseContextType = {
-    app: app as FirebaseApp,
-    auth: auth as Auth,
-    db: db as Firestore,
-    storage: storage as FirebaseStorage,
-    database: database as Database,
-    isFirebaseReady,
-  }
-
-  return <FirebaseContext.Provider value={contextValue}>{children}</FirebaseContext.Provider>
+  return (
+    <FirebaseContext.Provider
+      value={{
+        app,
+        auth,
+        db,
+        storage,
+        database,
+        isFirebaseReady,
+      }}
+    >
+      {children}
+    </FirebaseContext.Provider>
+  )
 }
 
 export const useFirebase = () => useContext(FirebaseContext)

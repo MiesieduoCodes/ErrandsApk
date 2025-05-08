@@ -7,7 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import * as Notifications from "expo-notifications"
 import NetInfo from "@react-native-community/netinfo"
-import { View, Text } from "react-native"
+import { View, Text, ActivityIndicator } from "react-native"
 import Constants from "expo-constants"
 
 // Screens
@@ -24,6 +24,7 @@ import OfflineIndicator from "./components/OfflineIndicator"
 import { ThemeProvider } from "./context/ThemeContext"
 import { FirebaseProvider } from "./context/FirebaseContext"
 import { AuthProvider } from "./context/AuthContext"
+import { useFirebase } from "./context/FirebaseContext"
 
 const Stack = createNativeStackNavigator()
 
@@ -40,7 +41,9 @@ if (!Constants.appOwnership || Constants.appOwnership !== "expo") {
   })
 }
 
-export default function App() {
+// Create a wrapper component that waits for Firebase to be ready
+const AppContent = () => {
+  const { isFirebaseReady } = useFirebase()
   const [isLoading, setIsLoading] = useState(true)
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null)
   const [isConnected, setIsConnected] = useState(true)
@@ -50,9 +53,13 @@ export default function App() {
     // Check if it's the first time the app is launched
     const initializeApp = async () => {
       try {
-        // Ensure JS runtime is ready
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        // Wait for Firebase to be ready
+        if (!isFirebaseReady) {
+          console.log("Waiting for Firebase to be ready...")
+          return
+        }
 
+        console.log("Firebase is ready, continuing app initialization")
         const hasLaunched = await AsyncStorage.getItem("hasLaunched")
         if (hasLaunched === null) {
           // First time launching the app
@@ -65,10 +72,10 @@ export default function App() {
         console.error("Error initializing app:", error)
         setIsFirstLaunch(false)
       } finally {
-        // Simulate loading time to ensure Firebase is ready
-        setTimeout(() => {
+        // Only set loading to false if Firebase is ready
+        if (isFirebaseReady) {
           setIsLoading(false)
-        }, 3000) // Increased time to ensure Firebase initialization
+        }
       }
     }
 
@@ -82,44 +89,50 @@ export default function App() {
     return () => {
       netInfoUnsubscribe()
     }
-  }, [])
+  }, [isFirebaseReady])
 
-  if (isLoading) {
-    return <SplashScreen />
+  if (!isFirebaseReady || isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 20 }}>{!isFirebaseReady ? "Initializing Firebase..." : "Loading app..."}</Text>
+      </View>
+    )
   }
 
   if (navigationError) {
     return (
-      <SafeAreaProvider>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
-          <Text style={{ fontSize: 18, marginBottom: 20, textAlign: "center" }}>
-            There was an error initializing the app. Please restart.
-          </Text>
-          <Text style={{ color: "gray", fontSize: 14 }}>{navigationError.toString()}</Text>
-        </View>
-      </SafeAreaProvider>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
+        <Text style={{ fontSize: 18, marginBottom: 20, textAlign: "center" }}>
+          There was an error initializing the app. Please restart.
+        </Text>
+        <Text style={{ color: "gray", fontSize: 14 }}>{navigationError.toString()}</Text>
+      </View>
     )
   }
 
   return (
+    <NavigationContainer onReady={() => console.log("Navigation container is ready")} fallback={<SplashScreen />}>
+      <OfflineIndicator />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isFirstLaunch && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
+        <Stack.Screen name="AuthScreen" component={AuthScreen} />
+        <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
+        <Stack.Screen name="Main" component={MainTabNavigator} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  )
+}
+
+export default function App() {
+  return (
     <SafeAreaProvider>
       <FirebaseProvider>
-        <AuthProvider>
-          <ThemeProvider>
-            <NavigationContainer
-              onReady={() => console.log("Navigation container is ready")}
-              fallback={<SplashScreen />}
-            >
-              <OfflineIndicator />
-              <Stack.Navigator screenOptions={{ headerShown: false }}>
-                {isFirstLaunch && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
-                <Stack.Screen name="AuthScreen" component={AuthScreen} />
-                <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
-                <Stack.Screen name="Main" component={MainTabNavigator} />
-              </Stack.Navigator>
-            </NavigationContainer>
-          </ThemeProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
       </FirebaseProvider>
     </SafeAreaProvider>
   )
