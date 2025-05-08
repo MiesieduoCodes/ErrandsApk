@@ -2,35 +2,30 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-// Import with explicit type annotations
-import {
-  app as firebaseApp,
-  auth as firebaseAuth, // Ensure explicit typing
-  db as firebaseDb,
-  storage as firebaseStorage,
-  database as firebaseDatabase,
-} from "../firebase/config"
+import { app, auth, db, storage, database } from "../firebase/config"
 import type { FirebaseApp } from "firebase/app"
 import type { Auth } from "firebase/auth"
-import { getAuth } from "firebase/auth"
+import type { Firestore } from "firebase/firestore"
+import type { FirebaseStorage } from "firebase/storage"
+import type { Database } from "firebase/database"
 
-// Define the Firebase context type with explicit any types
+// Define the Firebase context type
 interface FirebaseContextType {
-  app: FirebaseApp | any
-  auth: Auth | any
-  db: any
-  storage: any
-  database: any
+  app: FirebaseApp
+  auth: Auth
+  db: Firestore
+  storage: FirebaseStorage
+  database: Database
   isFirebaseReady: boolean
 }
 
-// Create context with default values
+// Create context with default values using type assertions
 const FirebaseContext = createContext<FirebaseContextType>({
-  auth: getAuth(firebaseApp),
-  auth: null,
-  db: null,
-  storage: null,
-  database: null,
+  app: {} as FirebaseApp,
+  auth: {} as Auth,
+  db: {} as Firestore,
+  storage: {} as FirebaseStorage,
+  database: {} as Database,
   isFirebaseReady: false,
 })
 
@@ -42,7 +37,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const checkFirebaseReady = async () => {
       try {
         // Simple check to ensure Firebase is initialized
-        if (firebaseAuth && firebaseDb && firebaseStorage && firebaseDatabase) {
+        if (auth && db && storage && database) {
           console.log("Firebase services are ready")
           setIsFirebaseReady(true)
         } else {
@@ -56,20 +51,17 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     checkFirebaseReady()
   }, [])
 
-  return (
-    <FirebaseContext.Provider
-      value={{
-        app: firebaseApp,
-        auth: firebaseAuth,
-        db: firebaseDb,
-        storage: firebaseStorage,
-        database: firebaseDatabase,
-        isFirebaseReady,
-      }}
-    >
-      {children}
-    </FirebaseContext.Provider>
-  )
+  // Use type assertions to tell TypeScript what types these variables are
+  const contextValue: FirebaseContextType = {
+    app: app as FirebaseApp,
+    auth: auth as Auth,
+    db: db as Firestore,
+    storage: storage as FirebaseStorage,
+    database: database as Database,
+    isFirebaseReady,
+  }
+
+  return <FirebaseContext.Provider value={contextValue}>{children}</FirebaseContext.Provider>
 }
 
 export const useFirebase = () => useContext(FirebaseContext)

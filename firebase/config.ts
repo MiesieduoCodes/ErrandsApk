@@ -1,10 +1,8 @@
 import { initializeApp, getApps, getApp } from "firebase/app"
-import { getAuth, initializeAuth } from "firebase/auth"
-import { getReactNativePersistence } from "@react-native-firebase/auth"
+import { getAuth } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
 import { getDatabase } from "firebase/database"
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage"
 
 
 const firebaseConfig = {
@@ -17,7 +15,6 @@ const firebaseConfig = {
   measurementId: "G-DLM5G0NPFZ",
 }
 
-
 // Initialize Firebase
 let app
 let auth
@@ -29,10 +26,8 @@ let database
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig)
 
-  // Initialize auth with persistence
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-  })
+  // Use standard getAuth without persistence for now
+  auth = getAuth(app)
 
   db = getFirestore(app)
   storage = getStorage(app)
