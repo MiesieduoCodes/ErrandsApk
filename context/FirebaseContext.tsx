@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useEffect } from "react"
 import { app, auth, db, storage, database } from "../firebase/config"
 import type { Auth } from "firebase/auth"
 import type { Firestore as FirestoreType } from "@firebase/firestore"
-import type { FirebaseStorage } from "firebase/storage"
+import type { Storage } from "firebase/storage"
 import type { Database as DatabaseType } from "@firebase/database"
 import type { FirebaseApp } from "firebase/app"
 
@@ -13,7 +13,7 @@ interface FirebaseContextType {
   app: FirebaseApp | null
   auth: Auth | null
   db: FirestoreType | null
-  storage: FirebaseStorage | null
+  storage: Storage | null
   database: DatabaseType | null
   isFirebaseReady: boolean
 }
