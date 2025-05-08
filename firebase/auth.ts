@@ -1,19 +1,14 @@
 // Import auth and other Firebase services here
 import { sendPasswordResetEmail, signOut, type User, type Auth } from "firebase/auth"
-import { doc, getDoc, setDoc, updateDoc, type Firestore } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore"
 import { auth, db, storage, database } from "./config"
+import type { UserType } from "../types"
 
 // No need to re-initialize services since we're importing them from config.ts
 // Just use the imported services directly
 
 // Explicitly type the imported auth and db
 const typedAuth: Auth = auth
-const typedDb: Firestore = db
-
-export { auth, db, storage, database }
-
-// User role types
-export type UserRole = "buyer" | "runner" | "seller" | "admin"
 
 // Permission types
 export type Permission =
@@ -25,7 +20,7 @@ export type Permission =
   | "access_admin"
 
 // Role definitions with associated permissions
-export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+export const ROLE_PERMISSIONS: Record<UserType, Permission[]> = {
   buyer: ["create_errand"],
   runner: ["run_errand"],
   seller: ["manage_products"],
@@ -37,11 +32,11 @@ export const hasPermission = async (user: User, permission: Permission): Promise
   if (!user) return false
 
   try {
-    const userDoc = await getDoc(doc(typedDb, "users", user.uid))
+    const userDoc = await getDoc(doc(db, "users", user.uid))
     if (!userDoc.exists()) return false
 
     const userData = userDoc.data()
-    const userRole = userData.userType as UserRole
+    const userRole = userData.userType as UserType
 
     return ROLE_PERMISSIONS[userRole]?.includes(permission) || false
   } catch (error) {
@@ -51,9 +46,9 @@ export const hasPermission = async (user: User, permission: Permission): Promise
 }
 
 // Set user role
-export const setUserRole = async (userId: string, role: UserRole): Promise<void> => {
+export const setUserRole = async (userId: string, role: UserType): Promise<void> => {
   try {
-    await updateDoc(doc(typedDb, "users", userId), {
+    await updateDoc(doc(db, "users", userId), {
       userType: role,
     })
   } catch (error) {
@@ -83,13 +78,13 @@ export const signOutUser = async (): Promise<void> => {
 }
 
 // Get user role
-export const getUserRole = async (userId: string): Promise<UserRole | null> => {
+export const getUserRole = async (userId: string): Promise<UserType | null> => {
   try {
-    const userDoc = await getDoc(doc(typedDb, "users", userId))
+    const userDoc = await getDoc(doc(db, "users", userId))
     if (!userDoc.exists()) return null
 
     const userData = userDoc.data()
-    return userData.userType as UserRole
+    return userData.userType as UserType
   } catch (error) {
     console.error("Error getting user role:", error)
     return null
@@ -102,7 +97,7 @@ export const syncRolePermissions = async (): Promise<void> => {
     // Create a roles collection with documents for each role
     for (const [role, permissions] of Object.entries(ROLE_PERMISSIONS)) {
       await setDoc(
-        doc(typedDb, "roles", role),
+        doc(db, "roles", role),
         {
           name: role,
           permissions,
@@ -116,3 +111,5 @@ export const syncRolePermissions = async (): Promise<void> => {
     throw error
   }
 }
+
+export { auth, db, storage, database }

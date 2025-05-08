@@ -22,11 +22,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "../context/AuthContext"
 import { useFirebase } from "../context/FirebaseContext"
 import { useTheme } from "../context/ThemeContext"
-import * as Google from "expo-auth-session/providers/google"
-import * as WebBrowser from "expo-web-browser"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
-
-WebBrowser.maybeCompleteAuthSession()
 
 const { width } = Dimensions.get("window")
 
@@ -44,6 +40,7 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   const [isSignUp, setIsSignUp] = useState(false)
   const [userType, setUserType] = useState<UserType>("buyer")
   const [isLoading, setIsLoading] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   // Animation values
   const dotAnimation = useRef(new Animated.Value(0)).current
@@ -56,13 +53,6 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
-
-  // Google Auth
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: "YOUR_WEB_CLIENT_ID",
-    androidClientId: "63:92:FB:19:95:BE:9A:05:4A:E0:B9:35:FC:29:ED:91:CD:25:9C:9A",
-    iosClientId: "com.googleusercontent.apps.917138938207-o39m78nc40p5iitma610du6qf6qljo6q",
-  })
 
   useEffect(() => {
     // Form entry animation
@@ -106,13 +96,6 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   }, [isLoading])
 
   useEffect(() => {
-    if (response?.type === "success") {
-      const { id_token } = response.params
-      handleGoogleSignIn(id_token)
-    }
-  }, [response])
-
-  useEffect(() => {
     if (user) {
       navigation.reset({
         index: 0,
@@ -122,10 +105,8 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   }, [user, navigation])
 
   const handleAuth = async () => {
-    if (!isFirebaseReady) {
-      Alert.alert("Please wait", "The app is still initializing. Please try again in a moment.")
-      return
-    }
+    // Clear previous errors
+    setAuthError(null)
 
     // Button press animation
     Animated.sequence([
@@ -141,8 +122,9 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
       }),
     ]).start()
 
-    if (isSignUp && (!name || !email || !phone || !password)) {
-      Alert.alert("Error", "Please fill in all fields")
+    // Validate form
+    if (isSignUp && (!name || !email || !password)) {
+      Alert.alert("Error", "Please fill in all required fields")
       return
     }
 
@@ -160,53 +142,37 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
       } else {
         await login(email, password, userType)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Authentication error:", error)
       let errorMessage = "Authentication failed. Please try again."
-      if ((error as { code: string }).code === "auth/email-already-in-use") {
-        errorMessage = "This email is already in use. Please use a different email or sign in."
-      } else if ((error as { code: string }).code === "auth/invalid-email") {
-        errorMessage = "Invalid email address."
-      } else if ((error as { code: string }).code === "auth/weak-password") {
-        errorMessage = "Password is too weak. Please use a stronger password."
-      } else if (
-        (error as { code: string }).code === "auth/user-not-found" ||
-        (error as { code: string }).code === "auth/wrong-password"
-      ) {
-        errorMessage = "Invalid email or password."
+
+      if (error.code) {
+        switch (error.code) {
+          case "auth/email-already-in-use":
+            errorMessage = "This email is already in use. Please use a different email or sign in."
+            break
+          case "auth/invalid-email":
+            errorMessage = "Invalid email address."
+            break
+          case "auth/weak-password":
+            errorMessage = "Password is too weak. Please use a stronger password."
+            break
+          case "auth/user-not-found":
+          case "auth/wrong-password":
+            errorMessage = "Invalid email or password."
+            break
+          case "auth/network-request-failed":
+            errorMessage = "Network error. Please check your connection and try again."
+            break
+          default:
+            errorMessage = `Authentication error: ${error.message}`
+        }
       }
 
+      setAuthError(errorMessage)
       Alert.alert("Error", errorMessage)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleGoogleSignIn = async (idToken: string) => {
-    try {
-      setIsLoading(true)
-      // This is a placeholder - actual implementation would use Firebase
-      console.log("Google sign in with token:", idToken, "and user type:", userType)
-      Alert.alert("Not Implemented", "Google sign-in is not fully implemented yet.")
-    } catch (error) {
-      console.error("Google sign in error:", error)
-      Alert.alert("Error", "Google sign in failed. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleGoogleAuth = async () => {
-    if (!isFirebaseReady) {
-      Alert.alert("Please wait", "The app is still initializing. Please try again in a moment.")
-      return
-    }
-
-    try {
-      await promptAsync()
-    } catch (error) {
-      console.error("Google authentication error:", error)
-      Alert.alert("Error", "Google authentication failed. Please try again.")
     }
   }
 
@@ -541,7 +507,7 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                       color: theme.text,
                     },
                   ]}
-                  placeholder="Phone Number"
+                  placeholder="Phone Number (optional)"
                   placeholderTextColor={`${theme.text}50`}
                   value={phone}
                   onChangeText={setPhone}
@@ -586,6 +552,8 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
               </TouchableOpacity>
             )}
 
+            {authError && <Text style={[styles.errorText, { color: "red" }]}>{authError}</Text>}
+
             <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
               <TouchableOpacity
                 style={[
@@ -605,32 +573,6 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
                 <Text style={styles.buttonText}>{isSignUp ? "Sign Up" : "Sign In"}</Text>
               </TouchableOpacity>
             </Animated.View>
-
-            <View style={styles.dividerContainer}>
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
-              <Text style={[styles.dividerText, { color: `${theme.text}80` }]}>OR</Text>
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.googleButton,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.card,
-                  shadowColor: theme.shadow,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 3,
-                },
-              ]}
-              onPress={handleGoogleAuth}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="logo-google" size={20} color={theme.text} />
-              <Text style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</Text>
-            </TouchableOpacity>
 
             <View style={styles.toggleContainer}>
               <Text style={[styles.toggleText, { color: `${theme.text}80` }]}>
@@ -763,6 +705,11 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  errorText: {
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: "center",
   },
   button: {
     height: 56,

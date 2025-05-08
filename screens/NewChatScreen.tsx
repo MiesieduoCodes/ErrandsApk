@@ -23,7 +23,7 @@ import { useTheme } from "../context/ThemeContext"
 import { searchService } from "../services/search"
 import { chatService } from "../services/chat"
 import type { RootStackParamList } from "../types"
-import type { User } from "../services/search"
+import type { User } from "../types"
 import * as Haptics from "expo-haptics"
 import { userService } from "../services/database"
 
@@ -86,20 +86,18 @@ const NewChatScreen = () => {
 
     try {
       setIsLoading(true)
-      const userChats = await chatService.getUserChats(user.id)
+      const userChats = await chatService.getUserChats(user.uid || "")
       const contactIds = new Set<string>()
-      
+
       userChats.forEach((chat) => {
         chat.participants.forEach((participantId) => {
-          if (participantId !== user.id) {
+          if (participantId !== user.uid) {
             contactIds.add(participantId)
           }
         })
       })
 
-      const contactPromises = Array.from(contactIds).map((userId) => 
-        userService.getUserByFirebaseUid(userId)
-      )
+      const contactPromises = Array.from(contactIds).map((userId) => userService.getUserByFirebaseUid(userId))
       const contactsData = await Promise.all(contactPromises)
       const validContacts = contactsData.filter((contact) => contact !== null).slice(0, 5)
 
@@ -117,7 +115,12 @@ const NewChatScreen = () => {
     try {
       setIsLoading(true)
       const results = await searchService.searchUsers({ query: searchQuery })
-      const filteredResults = results.filter((result) => result.id !== user.id)
+      const filteredResults = results
+        .filter((result) => result.id !== user.uid)
+        .map((result) => ({
+          ...result,
+          lastActive: result.lastActive || "", // Ensure lastActive is defined
+        }))
       setSearchResults(filteredResults)
     } catch (error) {
       console.error("Error searching users:", error)
@@ -132,7 +135,7 @@ const NewChatScreen = () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
       setIsLoading(true)
-      const chat = await chatService.createChat([user.id, selectedUser.id])
+      const chat = await chatService.createChat([user.uid || "", selectedUser.id])
       navigation.navigate("Chat", { chatId: chat.id })
     } catch (error) {
       console.error("Error creating chat:", error)
@@ -184,24 +187,14 @@ const NewChatScreen = () => {
           <Text style={[styles.userEmail, { color: theme.text + "80" }]}>{item.email}</Text>
 
           <View style={styles.badgeContainer}>
-            <View
-              style={[
-                styles.userTypeBadge,
-                { backgroundColor: theme.accent + "20" },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.userTypeText,
-                  { color: theme.accent },
-                ]}
-              >
+            <View style={[styles.userTypeBadge, { backgroundColor: theme.accent + "20" }]}>
+              <Text style={[styles.userTypeText, { color: theme.accent }]}>
                 {(item.userType ?? "unknown").charAt(0).toUpperCase() + (item.userType ?? "unknown").slice(1)}
               </Text>
             </View>
 
             {item.tags &&
-              item.tags.map((tag: string, index: number) => (
+              item.tags?.map((tag: string, index: number) => (
                 <View key={index} style={[styles.tagBadge, { backgroundColor: theme.secondary + "30" }]}>
                   <Text style={[styles.tagText, { color: theme.text + "90" }]}>{tag}</Text>
                 </View>

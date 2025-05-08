@@ -1,13 +1,16 @@
 // User types
 export interface User {
+  lastActive: any
+  tags?: string[] // Made optional
   id: string
+  uid?: string
   name?: string
   email?: string
   photoURL?: string
   userType: UserType
 }
 
-export type UserType = "buyer" | "runner" | "seller"
+export type UserType = "buyer" | "runner" | "seller" | "admin"
 
 // Errand types
 export interface Errand {
@@ -69,10 +72,10 @@ export type RootStackParamList = {
   Messages: undefined
   Notification: undefined
   TermsAndPrivacy: undefined
-  TabNavigator: undefined;
-  HelpCenterScreen: undefined;
+  TabNavigator: undefined
+  HelpCenterScreen: undefined
   Chat: { chatId: string }
   IdentityVerification: undefined
   Payment: undefined
-  RequestErrand: undefined // Add RequestErrand to navigation types
+  RequestErrand: undefined
 }

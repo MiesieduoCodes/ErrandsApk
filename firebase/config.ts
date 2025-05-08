@@ -1,30 +1,23 @@
-// Make sure the Firebase app is initialized correctly and exported
 import { initializeApp, getApps, getApp } from "firebase/app"
 import { getAuth } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
 import { getDatabase } from "firebase/database"
-import Constants from "expo-constants"
-
 
 // Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: Constants.expoConfig?.extra?.firebaseApiKey || "AIzaSyAQLHTMNHexjbSJXsATVICgNSKVu1o4F8A",
-  authDomain: Constants.expoConfig?.extra?.firebaseAuthDomain || "boltlikeapp.firebaseapp.com",
-  projectId: Constants.expoConfig?.extra?.firebaseProjectId || "boltlikeapp",
-  storageBucket: Constants.expoConfig?.extra?.firebaseStorageBucket || "boltlikeapp.appspot.com",
-  messagingSenderId: Constants.expoConfig?.extra?.firebaseMessagingSenderId || "295259306973",
-  appId: Constants.expoConfig?.extra?.firebaseAppId || "1:295259306973:web:2e2e7a509eea402daa9434",
-  databaseURL: Constants.expoConfig?.extra?.firebaseDatabaseURL || "https://boltlikeapp-default-rtdb.firebaseio.com",
+  apiKey: "AIzaSyAQLHTMNHexjbSJXsATVICgNSKVu1o4F8A",
+  authDomain: "boltlikeapp.firebaseapp.com",
+  projectId: "boltlikeapp",
+  storageBucket: "boltlikeapp.appspot.com",
+  messagingSenderId: "295259306973",
+  appId: "1:295259306973:web:2e2e7a509eea402daa9434",
+  measurementId: "G-DLM5G0NPFZ",
 }
 
 // Initialize Firebase
-let app
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig)
-} else {
-  app = getApp()
-}
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
 // Initialize Firebase services
 const auth = getAuth(app)
@@ -33,3 +26,9 @@ const storage = getStorage(app)
 const database = getDatabase(app)
 
 export { app, auth, db, storage, database }
+
+
+
+  // databaseURL: Constants.expoConfig?.extra?.firebaseDatabaseURL || "https://boltlikeapp-default-rtdb.firebaseio.com",
+
+

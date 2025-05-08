@@ -4,19 +4,21 @@ import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { app, auth, db, storage, database } from "../firebase/config"
 import type { Auth } from "firebase/auth"
-import type { Firestore } from "firebase/firestore"
-import type { Storage } from "firebase/storage"
-import type { Database } from "firebase/database"
+import type { Firestore as FirestoreType } from "@firebase/firestore"
+import type { FirebaseStorage } from "firebase/storage"
+import type { Database as DatabaseType } from "@firebase/database"
+import type { FirebaseApp } from "firebase/app"
 
 interface FirebaseContextType {
-  app: any
+  app: FirebaseApp | null
   auth: Auth | null
-  db: Firestore | null
-  storage: Storage | null
-  database: Database | null
+  db: FirestoreType | null
+  storage: FirebaseStorage | null
+  database: DatabaseType | null
   isFirebaseReady: boolean
 }
 
+// Create context with default values
 const FirebaseContext = createContext<FirebaseContextType>({
   app: null,
   auth: null,
@@ -30,22 +32,13 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isFirebaseReady, setIsFirebaseReady] = useState(false)
 
   useEffect(() => {
-    // Check if Firebase is initialized
-    const checkFirebaseReady = async () => {
-      try {
-        // Verify auth is initialized
-        if (auth && db && storage && database) {
-          console.log("Firebase services are ready")
-          setIsFirebaseReady(true)
-        } else {
-          console.error("Some Firebase services are not initialized")
-        }
-      } catch (error) {
-        console.error("Error checking Firebase readiness:", error)
-      }
+    // Simple check to ensure Firebase is initialized
+    if (auth && db && storage && database) {
+      console.log("Firebase services are ready")
+      setIsFirebaseReady(true)
+    } else {
+      console.error("Some Firebase services are not initialized")
     }
-
-    checkFirebaseReady()
   }, [])
 
   return (

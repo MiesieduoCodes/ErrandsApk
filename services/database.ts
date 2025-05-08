@@ -1,7 +1,7 @@
 import { ref, set, get, update, query, orderByChild, equalTo, push } from "firebase/database"
 import { database, auth } from "../firebase/config"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import type { UserType } from "../context/AuthContext"
+import type { UserType } from "../types"
 
 // User Services
 export const userService = {
@@ -149,7 +149,7 @@ export const userService = {
         createdAt?: string
       }> = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         addresses.push({
           id: childSnapshot.key,
           ...childSnapshot.val(),
@@ -187,7 +187,7 @@ export const userService = {
       if (address.isDefault) {
         const snapshot = await get(addressesRef)
         if (snapshot.exists()) {
-          snapshot.forEach((childSnapshot) => {
+          snapshot.forEach((childSnapshot: any) => {
             if (childSnapshot.key !== newAddressRef.key) {
               update(ref(database, `userAddresses/${uid}/${childSnapshot.key}`), {
                 isDefault: false,
@@ -230,7 +230,7 @@ export const userService = {
         const addressesRef = ref(database, `userAddresses/${uid}`)
         const snapshot = await get(addressesRef)
         if (snapshot.exists()) {
-          snapshot.forEach((childSnapshot) => {
+          snapshot.forEach((childSnapshot: any) => {
             if (childSnapshot.key !== addressId) {
               update(ref(database, `userAddresses/${uid}/${childSnapshot.key}`), {
                 isDefault: false,
@@ -277,7 +277,7 @@ export const userService = {
 
       const promises: Promise<void>[] = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         const runnerId = childSnapshot.key
         promises.push(
           this.getUserByFirebaseUid(runnerId).then((runner) => {
@@ -364,7 +364,7 @@ export const locationService = {
         [key: string]: any
       }> = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         const user = childSnapshot.val()
         const userId = childSnapshot.key
 
@@ -484,7 +484,7 @@ export const errandService = {
 
       if (snapshot.exists()) {
         let errand = null
-        snapshot.forEach((childSnapshot) => {
+        snapshot.forEach((childSnapshot: any) => {
           errand = {
             id: childSnapshot.key,
             ...childSnapshot.val(),
@@ -528,7 +528,7 @@ export const errandService = {
         [key: string]: any
       }> = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         errands.push({
           id: childSnapshot.key,
           ...childSnapshot.val(),
@@ -618,7 +618,7 @@ export const errandService = {
         [key: string]: any
       }> = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         errands.push({
           id: childSnapshot.key,
           ...childSnapshot.val(),
@@ -660,7 +660,7 @@ export const sellerService = {
         [key: string]: any
       }> = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         products.push({
           id: childSnapshot.key,
           ...childSnapshot.val(),
@@ -796,7 +796,7 @@ export const sellerService = {
         [key: string]: any
       }> = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         orders.push({
           id: childSnapshot.key,
           ...childSnapshot.val(),
@@ -936,7 +936,7 @@ export const runnerService = {
         [key: string]: any
       }> = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         const errand = childSnapshot.val()
 
         // Skip errands that already have a runner
@@ -1039,7 +1039,7 @@ export const runnerService = {
       let completedToday = 0
       let completedTotal = 0
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         const errand = childSnapshot.val()
 
         if (errand.status === "completed") {
@@ -1095,7 +1095,7 @@ export const runnerService = {
         [key: string]: any
       }> = []
 
-      snapshot.forEach((childSnapshot) => {
+      snapshot.forEach((childSnapshot: any) => {
         const errand = childSnapshot.val()
 
         if (["accepted", "in_progress"].includes(errand.status)) {
